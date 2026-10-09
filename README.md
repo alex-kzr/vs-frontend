@@ -17,7 +17,9 @@ Development uses http://127.0.0.1:45173 and a /api proxy to 127.0.0.1:48173. str
 
 Five feature areas: vacancies, criteria, companies, contacts and recorded conversations. Loaders propagate AbortSignal. Actions own persistence and revalidation; drafts and retry keys remain in memory on failures. No message body/contact details are persisted in browser storage. Record message never sends anything externally.
 
-Search preview is offline fixture-v1, applies saved criteria and lets the user import selected synthetic records into an explicitly selected company. Live providers are not connected.
+Fixture-v1 preview applies saved criteria and imports selected synthetic records into an explicitly selected company. Optional HH criteria support the user's query, named regions and current provider filters, with manual page navigation, cancellation and selective import. HH access status is displayed, with preview disabled when local setup is absent. No credential entry form, automatic pagination or retry exists. Search snippets and original salary/source metadata are labelled and preserved.
+
+HH browser responses in smoke tests are synthetic; live API availability and applicant registration eligibility are unverified. The user reports a company-only registration form, so real HH access remains blocked. See ../../docs/architecture/hh.md. Email-file/text import is not implemented.
 
 ## Browser smoke
 
@@ -30,4 +32,4 @@ npm run smoke
 
 Smoke writes synthetic records; never point it at the personal operational database. Tests cover full search/import/status/contact/conversation flows, lost response with exact-token retry, cancel protection, validation conflict retention, 404, duplicate observations and filter Back. Evidence goes to ignored test-results/.
 
-Unit tests are discovered separately under src/. No external accounts/API credentials are needed.
+Unit tests are discovered separately under src/. No external accounts/API credentials are needed. Current gate: 7 unit tests and 7 Chromium workflows pass, including HH criteria/import/history, cancellation/rate-limit recovery and disabled setup with fixture fallback.

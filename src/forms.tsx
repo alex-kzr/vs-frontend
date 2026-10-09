@@ -1,3 +1,4 @@
+import { HhCriteriaFields } from './hh-form';
 import { useState } from 'react';
 import { Link, useLoaderData } from 'react-router';
 import { toUtc } from './api';
@@ -25,10 +26,15 @@ function EntryForm({data}: {data:RouteData}) {
  const companyChoices=companies.map(c=>({id:c.id,label:c.name}));
  function build(form:FormData):Json {
   if(resource==='companies')return {name:text(form,'name'),website:nullable(form,'website'),notes:nullable(form,'notes')};
-  if(resource==='search-configurations')return {name:text(form,'name'),criteria_version:1,enabled:form.get('enabled')==='on',criteria:{
-   role:nullable(form,'role'),keywords:csv(form,'keywords'),excluded_keywords:csv(form,'excluded_keywords'),locations:csv(form,'locations'),technologies:csv(form,'technologies'),
-   work_formats:form.getAll('work_formats').map(String),employment_types:form.getAll('employment_types').map(String),
-  }};
+  if(resource==='search-configurations') {
+   const criteria={role:nullable(form,'role'),keywords:csv(form,'keywords'),excluded_keywords:csv(form,'excluded_keywords'),locations:csv(form,'locations'),technologies:csv(form,'technologies'),
+    work_formats:form.getAll('work_formats').map(String),employment_types:form.getAll('employment_types').map(String)};
+   return {name:text(form,'name'),criteria_version:1,enabled:form.get('enabled')==='on',criteria:{
+    ...criteria,...(form.get('use_hh')==='on'?{hh:{text:nullable(form,'hh_text'),areas:JSON.parse(text(form,'hh_areas')||'[]') as Json,
+     experience:form.getAll('hh_experience').map(String),work_formats:form.getAll('hh_work_formats').map(String),employment_forms:form.getAll('hh_employment').map(String),
+     period_days:text(form,'hh_period')?Number(text(form,'hh_period')):null,per_page:Number(text(form,'hh_per_page')||20)}}:{}),
+   }};
+  }
   if(resource==='contacts')return {
    ...(record?{}:{company_id:text(form,'company_id')}),display_name:text(form,'display_name'),email:nullable(form,'email'),
    profile_url:nullable(form,'profile_url'),notes:nullable(form,'notes'),role_ids:form.getAll('role_ids').map(String),
@@ -52,7 +58,7 @@ function EntryForm({data}: {data:RouteData}) {
    <Field label="Configuration name" name="name" defaultValue={config?.name} required maxLength={200}/>
    <label className="check"><input type="checkbox" name="enabled" defaultChecked={config?.enabled??true}/> Enabled for manual selection</label>
    <p className="hint">These preferences are saved locally. No scheduled monitoring starts.</p>
-   <Field label="Role" name="role" defaultValue={config?.criteria.role||''} maxLength={500}/>
+   <HhCriteriaFields value={config?.criteria.hh}/><p className="hint">The preferences below are used for fixture matching. HH searches use the HH fields above.</p><Field label="Role" name="role" defaultValue={config?.criteria.role||''} maxLength={500}/>
    {(['keywords','excluded_keywords','locations','technologies'] as const).map(key=><Field key={key} label={key.replaceAll('_',' ')+' (comma separated)'} name={key} defaultValue={config?.criteria[key].join(', ')||''}/>)}
    <fieldset><legend>Work formats</legend>{formats.map(value=><label key={value} className="check"><input type="checkbox" name="work_formats" value={value} defaultChecked={config?.criteria.work_formats.includes(value)}/> {value}</label>)}</fieldset>
    <fieldset><legend>Employment types</legend>{employment.map(value=><label key={value} className="check"><input type="checkbox" name="employment_types" value={value} defaultChecked={config?.criteria.employment_types.includes(value)}/> {value.replaceAll('_',' ')}</label>)}</fieldset>
