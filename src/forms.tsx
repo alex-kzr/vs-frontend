@@ -30,7 +30,7 @@ function EntryForm({data}: {data:RouteData}) {
    const criteria={role:nullable(form,'role'),keywords:csv(form,'keywords'),excluded_keywords:csv(form,'excluded_keywords'),locations:csv(form,'locations'),technologies:csv(form,'technologies'),
     work_formats:form.getAll('work_formats').map(String),employment_types:form.getAll('employment_types').map(String)};
    return {name:text(form,'name'),criteria_version:1,enabled:form.get('enabled')==='on',criteria:{
-    ...criteria,...(form.get('use_hh')==='on'?{hh:{text:nullable(form,'hh_text'),areas:JSON.parse(text(form,'hh_areas')||'[]') as Json,
+    ...criteria,...(text(form,'queries')||config?.criteria.queries?{queries:text(form,'queries').split(/\r?\n/).map(q=>q.trim()).filter(Boolean)}:{}),...(form.get('use_hh')==='on'?{hh:{text:nullable(form,'hh_text'),areas:JSON.parse(text(form,'hh_areas')||'[]') as Json,
      experience:form.getAll('hh_experience').map(String),work_formats:form.getAll('hh_work_formats').map(String),employment_forms:form.getAll('hh_employment').map(String),
      period_days:text(form,'hh_period')?Number(text(form,'hh_period')):null,per_page:Number(text(form,'hh_per_page')||20)}}:{}),
    }};
@@ -58,6 +58,8 @@ function EntryForm({data}: {data:RouteData}) {
    <Field label="Configuration name" name="name" defaultValue={config?.name} required maxLength={200}/>
    <label className="check"><input type="checkbox" name="enabled" defaultChecked={config?.enabled??true}/> Enabled for manual selection</label>
    <p className="hint">These preferences are saved locally. No scheduled monitoring starts.</p>
+   <TextArea label="Browser search queries (one per line)" name="queries" value={config?.criteria.queries?.join('\n')} max={10050}/>
+   <p className="hint">Each configuration has independent queries and associated discoveries. Queries open ordinary HH search pages only when you choose a link.</p>
    <HhCriteriaFields value={config?.criteria.hh}/><p className="hint">The preferences below are used for fixture matching. HH searches use the HH fields above.</p><Field label="Role" name="role" defaultValue={config?.criteria.role||''} maxLength={500}/>
    {(['keywords','excluded_keywords','locations','technologies'] as const).map(key=><Field key={key} label={key.replaceAll('_',' ')+' (comma separated)'} name={key} defaultValue={config?.criteria[key].join(', ')||''}/>)}
    <fieldset><legend>Work formats</legend>{formats.map(value=><label key={value} className="check"><input type="checkbox" name="work_formats" value={value} defaultChecked={config?.criteria.work_formats.includes(value)}/> {value}</label>)}</fieldset>
@@ -79,7 +81,7 @@ function EntryForm({data}: {data:RouteData}) {
    <p className="hint">Salary period is unspecified; salary comparisons are unavailable.</p>
    <Field label="Public vacancy URL" name="public_url" type="url" maxLength={2048}/>
    <fieldset><legend>Source and observation</legend>
-    <Select label="Source" name="source_id" options={sources.map(s=>({id:s.id,label:s.name||s.code}))} value={sources.find(s=>s.code==='manual')?.id} required/>
+    <Select label="Source" name="source_id" options={sources.filter(s=>s.code!=='hh-browser').map(s=>({id:s.id,label:s.name||s.code}))} value={sources.find(s=>s.code==='manual')?.id} required/>
     <Field label="External vacancy ID" name="external_vacancy_id" defaultValue={ids.external} maxLength={500}/>
     <Field label="Source URL" name="external_url" type="url" maxLength={2048}/>
     <p className="hint">Keep this source ID when recording the same vacancy again. At least one source ID or URL is required.</p>
