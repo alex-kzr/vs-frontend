@@ -1,3 +1,4 @@
+import { CheckboxFilter, SearchableCheckboxFilter } from './filter-select';
 import { clientUuid } from './identity';
 import { SearchPreview } from './preview';
 import { useState, type FormEvent } from 'react';
@@ -37,6 +38,7 @@ export function ListScreen() {
  const d=useLoaderData<RouteData>();const page=d.page!;const location=useLocation();const navigate=useNavigate();const params=new URLSearchParams(location.search);
  function apply(event:FormEvent<HTMLFormElement>) {
   event.preventDefault();const entries=new FormData(event.currentTarget);const search=cleanFilters(new URLSearchParams([...entries].map(([k,v])=>[k,String(v)])),filters[d.resource]);
+  if(params.has('limit'))search.set('limit',params.get('limit')!);
   void navigate(location.pathname+(search.size?'?'+search:''));
  }
  const active=cleanFilters(params,filters[d.resource]).size>0;
@@ -45,8 +47,8 @@ export function ListScreen() {
  {!vacancies&&<><div className="eyebrow">ПОИСК И ПЕРЕПИСКИ</div><div className="page-title"><div><h1>{names[d.resource]}</h1><p className="lede">{d.resource==='conversations'?'История переписок в хронологическом порядке.':'Профили поиска и связанные записи.'}</p></div><Link className="button" to={'/'+d.resource+'/new'}>+ {d.resource==='conversations'?'Записать переписку':'Создать запись'}</Link></div></>}
  <form className="filters" key={location.search} onSubmit={apply}>
   {filters[d.resource].includes('q')&&<Field label="Поиск" name="q" defaultValue={params.get('q')||''} maxLength={200} placeholder={d.resource==='vacancies'?'Поиск по названию…':'Поиск по имени…'}/>}
-  {d.resource==='vacancies'&&<Select label="Статус" name="status" options={choices(statuses)} value={params.get('status')||''}/>}
-  {filters[d.resource].includes('company_id')&&<Select label="Компания" name="company_id" options={d.companies.map(c=>({id:c.id,label:c.name}))} value={params.get('company_id')||''}/>}
+  {d.resource==='vacancies'&&<CheckboxFilter label="Статусы" name="status" options={choices(statuses)} selected={params.getAll('status')}/>}
+  {filters[d.resource].includes('company_id')&&<SearchableCheckboxFilter label="Компании" name="company_id" options={d.companies.map(c=>({id:c.id,label:c.name}))} selected={params.getAll('company_id')} searchLabel="Поиск компаний"/>}
   {d.resource==='vacancies'&&<><Select label="Источник" name="source_id" options={d.sources.map(s=>({id:s.id,label:lookupLabel(s)}))} value={params.get('source_id')||''}/><Select label="Профиль поиска" name="search_configuration_id" options={d.configs.map(c=>({id:c.id,label:c.name}))} value={params.get('search_configuration_id')||''}/></>}
   {d.resource==='search-configurations'&&<Select label="Включён" name="enabled" options={[{id:'true',label:'Включён'},{id:'false',label:'Выключен'}]} value={params.get('enabled')||''}/>}
   {d.resource==='conversations'&&<><Field label="ID вакансии" name="vacancy_id" defaultValue={params.get('vacancy_id')||''}/><Select label="Канал" name="channel_id" options={d.channels.map(c=>({id:c.id,label:lookupLabel(c)}))} value={params.get('channel_id')||''}/></>}

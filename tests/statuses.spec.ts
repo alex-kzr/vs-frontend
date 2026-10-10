@@ -38,6 +38,6 @@ test('legacy refusal remains unspecified until explicit choice; failed save reta
  expect((await (await request.get('/api/v1/vacancies/'+id)).json()).data.status).toBe('rejected');
  await page.unroute(route);await page.getByRole('button',{name:'Повторить предыдущий запрос',exact:true}).click();await expect(page.getByRole('status')).toContainText('Сохранено в SQLite.');
  await page.reload();await expect(page.getByRole('radio',{name:'Я отказался',exact:true})).toBeChecked();await expect(page.getByRole('radio',{name:'Отказ — сторона не указана',exact:true})).toHaveCount(0);
- await page.goto('/vacancies?status=rejected');await expect(page.getByLabel('Статус',{exact:true})).toHaveValue('rejected');
- await expect(page.getByLabel('Статус',{exact:true}).locator('option[value="rejected"]')).toHaveText('Отказ — сторона не указана');
+ await page.goto('/vacancies?status=rejected');await page.getByRole('button',{name:/^Статусы:/}).click();await expect(page.getByRole('checkbox',{name:'Отказ — сторона не указана',exact:true})).toBeChecked();
+
 });

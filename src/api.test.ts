@@ -32,3 +32,7 @@ it('requires an occurrence time',()=>{
  expect(()=>toUtc('')).toThrow('Укажите дату и время.');
  expect(toUtc('2026-10-09T12:00:00Z')).toBe('2026-10-09T12:00:00.000Z');
 });
+
+it('filter query preserves repeated selections and removes stale cursor and empty fields',()=>{
+ expect(cleanFilters(new URLSearchParams('status=new&status=saved&company_id=a&company_id=b&company_id=&cursor=old&search_configuration_id=profile'),['status','company_id','search_configuration_id']).toString()).toBe('status=new&status=saved&company_id=a&company_id=b&search_configuration_id=profile');
+});

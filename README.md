@@ -39,3 +39,7 @@ Russian UI uses src/i18n.ts for status/format/direction/lookup presentation and 
 ## HTTP-origin compatibility
 
 All client receipt/entity/request UUIDs use src/identity.ts. The native secure-context API has a cryptographic getRandomValues fallback for ordinary HTTP origins. tests/http-save.spec.ts exercises a real non-secure HTTP hostname against an isolated database, including PATCH/POST, failure, retry and retained drafts. No browser security override is used.
+
+## Multi-value filters
+
+src/filter-select.tsx exports CheckboxFilter (small lists, no search) and SearchableCheckboxFilter (large lists, internal name search). Status/company list filters preserve selection across searches, URL pagination, Back/Forward and reload. Native keyboard disclosure and checkboxes, Russian labels and per-filter clearing are supported. Apply preserves profile/source/page size and resets the cursor. Current checks: 16 unit tests and 13 Chromium workflows; see ../../docs/roadmap/multi-filters.md.
