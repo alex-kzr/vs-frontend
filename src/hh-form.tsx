@@ -1,3 +1,4 @@
+import { clientUuid } from './identity';
 import { useEffect, useRef, useState } from 'react';
 import { api, ApiError } from './api';
 import type { ApiProblem, HhCriteria } from './types';
@@ -22,7 +23,7 @@ export function HhCriteriaFields({value}: {value?:HhCriteria}) {
  }
  useEffect(()=>()=>{const request=active.current;if(request){request.controller.abort();void api('hh/requests/'+request.id,{method:'DELETE'}).catch(()=>undefined);}},[]);
  async function findAreas() {
-  stop();const request={controller:new AbortController(),id:crypto.randomUUID()};active.current=request;setPending(true);setError(null);
+  stop();const request={controller:new AbortController(),id:clientUuid()};active.current=request;setPending(true);setError(null);
   try {
    const result=await api<{items:{id:string;name:string}[]}>('hh/areas?text='+encodeURIComponent(query.trim())+'&request_id='+request.id,{signal:request.controller.signal});
    if(active.current===request)setSuggestions(result.items);

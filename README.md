@@ -35,3 +35,7 @@ Smoke writes synthetic records; never point it at the personal operational datab
 Unit tests are discovered separately under src/. No external accounts/API credentials are needed. The Russian UI gate is recorded in ../../docs/architecture/localization-and-statuses.md. The previous baseline had 7 unit tests and 7 Chromium workflows, including HH criteria/import/history, cancellation/rate-limit recovery and disabled setup with fixture fallback.
 
 Russian UI uses src/i18n.ts for status/format/direction/lookup presentation and safe errors. User text and raw provenance are retained. Detail radio choices show both refusal parties; legacy rejected stays unspecified. History reloads after successful PATCH. The user release app always runs at 127.0.0.1:48173.
+
+## HTTP-origin compatibility
+
+All client receipt/entity/request UUIDs use src/identity.ts. The native secure-context API has a cryptographic getRandomValues fallback for ordinary HTTP origins. tests/http-save.spec.ts exercises a real non-secure HTTP hostname against an isolated database, including PATCH/POST, failure, retry and retained drafts. No browser security override is used.

@@ -1,3 +1,4 @@
+import { clientUuid } from './identity';
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
 import { all, api, ApiError } from './api';
@@ -13,7 +14,7 @@ export async function previewLoader(id:string,signal:AbortSignal):Promise<Previe
  const [preview,companies,sources]=await Promise.all([
   api<Preview>('search-configurations/'+id+'/preview',{signal}),all<Company>('companies',signal),all<Lookup>('vacancy-sources',signal),
  ]);
- return {preview,companies,sources,requestId:crypto.randomUUID()};
+ return {preview,companies,sources,requestId:clientUuid()};
 }
 export function SearchPreview({configurationId,hh}: {configurationId:string;hh?:HhCriteria}) {
  const [status,setStatus]=useState<HhStatus|null>(null);
@@ -33,7 +34,7 @@ export function SearchPreview({configurationId,hh}: {configurationId:string;hh?:
   active.current=null;setPending(false);setMessage('Просмотр отменён. Вакансии не импортированы.');
  }
  async function search(adapter:string,page=0) {
-  stop();const request={controller:new AbortController(),id:crypto.randomUUID(),adapter};active.current=request;
+  stop();const request={controller:new AbortController(),id:clientUuid(),adapter};active.current=request;
   setPending(true);setError(null);setMessage('');setResult(null);
   try {
    const [preview,companies,sources]=await Promise.all([
@@ -61,7 +62,7 @@ export function SearchPreview({configurationId,hh}: {configurationId:string;hh?:
  </div>;
 }
 function CandidateImport({candidate,data}: {candidate:Candidate;data:PreviewResult}) {
- const mutation=useMutation();const [companyId,setCompanyId]=useState('');const [observation]=useState(()=>({key:crypto.randomUUID(),time:typeof candidate.source_payload?.fetched_at==='string'?candidate.source_payload.fetched_at:new Date().toISOString()}));
+ const mutation=useMutation();const [companyId,setCompanyId]=useState('');const [observation]=useState(()=>({key:clientUuid(),time:typeof candidate.source_payload?.fetched_at==='string'?candidate.source_payload.fetched_at:new Date().toISOString()}));
  const success=mutation.result?.ok?mutation.result.data:null;
  const source=data.sources.find(s=>s.code===data.preview.adapter);
  const salary=candidate.source_payload?.salary as Record<string,Json>|null|undefined;

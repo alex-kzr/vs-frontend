@@ -1,3 +1,4 @@
+import { clientUuid } from './identity';
 import { useEffect, useRef, useState, type FormEvent, type ReactNode, type ComponentPropsWithoutRef } from 'react';
 import { Link, useBlocker, useBeforeUnload, useFetcher, useNavigate, useRevalidator, type ActionFunctionArgs, data } from 'react-router';
 import { api, ApiError } from './api';
@@ -31,7 +32,7 @@ export function useMutation() {
       setLocalError({code:'unconfirmed_submission',message:'Предыдущее сохранение не подтверждено. Повторите его без изменений, прежде чем редактировать и сохранять снова.',fields:{}});
       return;
     }
-    const key=previous && JSON.stringify(previous.body)===JSON.stringify(body) ? previous.key : crypto.randomUUID();
+    const key=previous && JSON.stringify(previous.body)===JSON.stringify(body) ? previous.key : clientUuid();
     attempt.current={path,method,body,key};setLocalError(null);
     void fetcher.submit(attempt.current,{method:'post',action:'/_mutate',encType:'application/json'});
   }

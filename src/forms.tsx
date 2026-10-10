@@ -1,3 +1,4 @@
+import { clientUuid } from './identity';
 import { HhCriteriaFields } from './hh-form';
 import { useState } from 'react';
 import { Link, useLoaderData } from 'react-router';
@@ -19,7 +20,7 @@ function EntryForm({data}: {data:RouteData}) {
  const companyDefault=record&&'company_id' in record?record.company_id:'';
  const [companyId,setCompanyId]=useState(companyDefault);
  const [participantKind,setParticipantKind]=useState('unknown');
- const [ids]=useState(()=>({external:crypto.randomUUID(),observation:crypto.randomUUID()}));
+ const [ids]=useState(()=>({external:clientUuid(),observation:clientUuid()}));
  const config=resource==='search-configurations'?record as Configuration|undefined:undefined;
  const company=resource==='companies'?record as Company|undefined:undefined;
  const contact=resource==='contacts'?record as Contact|undefined:undefined;

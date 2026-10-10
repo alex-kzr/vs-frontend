@@ -1,3 +1,4 @@
+import { clientUuid } from './identity';
 import { SearchPreview } from './preview';
 import { useState, type FormEvent } from 'react';
 import { Link, NavLink, Outlet, useLoaderData, useLocation, useNavigate, useNavigation, useRouteError } from 'react-router';
@@ -104,14 +105,14 @@ function MessageItem({message:m,sender}: {message:Message;sender:string}) {
  return <li className={'message '+m.direction}><div><strong>{sender}</strong><span className="badge">{valueLabel(m.direction)}</span></div><p className="preserve">{m.body}</p><Time value={m.occurred_at}/></li>;
 }
 function MessageComposer({conversation}: {conversation:Conversation}) {
- const mutation=useMutation();const [dirty,setDirty]=useState(false);const [direction,setDirection]=useState('outbound');const [clientId,setClientId]=useState(()=>crypto.randomUUID());
+ const mutation=useMutation();const [dirty,setDirty]=useState(false);const [direction,setDirection]=useState('outbound');const [clientId,setClientId]=useState(()=>clientUuid());
  const participants=(conversation.participants||[]).filter(p=>(p.participant_kind==='user')===(direction==='outbound'));
  const success=mutation.result?.ok===true;
  function submit(event:FormEvent<HTMLFormElement>) {
   event.preventDefault();const f=new FormData(event.currentTarget);
   mutation.submit('conversations/'+conversation.id+'/messages','POST',{direction,sender_participant_id:text(f,'sender_participant_id'),body:String(f.get('body')||''),occurred_at:toUtc(text(f,'occurred_at')),client_message_id:clientId,external_message_id:nullable(f,'external_message_id')});
  }
- if(success)return <div role="status"><p>Сообщение сохранено в SQLite.</p><button onClick={()=>{mutation.reset();setClientId(crypto.randomUUID());setDirty(false);}}>Записать ещё сообщение</button></div>;
+ if(success)return <div role="status"><p>Сообщение сохранено в SQLite.</p><button onClick={()=>{mutation.reset();setClientId(clientUuid());setDirty(false);}}>Записать ещё сообщение</button></div>;
  return <><DraftGuard dirty={dirty}/><form onSubmit={submit} onChange={()=>setDirty(true)}><Problem error={mutation.error}/>
   <Select label="Направление" name="direction" options={choices(['outbound','inbound'])} value={direction} required onChange={setDirection}/>
   <Select key={direction+participants.length} label="Отправитель" name="sender_participant_id" options={participants.map(p=>({id:p.id,label:p.display_name}))} value={participants[0]?.id} required/>
@@ -122,7 +123,7 @@ function MessageComposer({conversation}: {conversation:Conversation}) {
  </form></>;
 }
 function ParticipantForm({data:d,record:r}: {data:RouteData;record:Conversation}) {
- const [kind,setKind]=useState('unknown');const [key]=useState(()=>crypto.randomUUID());
+ const [kind,setKind]=useState('unknown');const [key]=useState(()=>clientUuid());
  return <SaveForm path={'conversations/'+r.id+'/participants'} cancelTo={'/conversations/'+r.id} build={form=>({participant_key:key,participant_kind:kind,contact_id:kind==='contact'?text(form,'contact_id'):null,display_name:kind==='contact'?null:text(form,'display_name')}) as Json}>
   <Select label="Тип участника" name="participant_kind" options={choices(['unknown','contact','user'])} value={kind} required onChange={setKind}/>
   {kind==='contact'?<Select label="Контакт" name="contact_id" options={d.contacts.filter(c=>c.company_id===r.company_id).map(c=>({id:c.id,label:c.display_name}))} required/>:<Field label="Имя участника" name="display_name" required maxLength={300}/>}
