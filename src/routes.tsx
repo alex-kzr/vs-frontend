@@ -1,7 +1,7 @@
 import { previewLoader } from './preview';
 import { createBrowserRouter, redirect, type LoaderFunctionArgs } from 'react-router';
 import { api,all } from './api';
-import type { Company, Configuration, Contact, Conversation, Lookup, Vacancy, Page, Discovery, Message } from './types';
+import type { Company, Configuration, Contact, Conversation, Lookup, Vacancy, Page, Discovery, Message, StatusChange } from './types';
 import { Layout, RouteFailure, ListScreen, DetailScreen } from './screens';
 import { EntryScreen } from './forms';
 import { mutationAction } from './ui';
@@ -9,10 +9,10 @@ import { mutationAction } from './ui';
 export const resources=['vacancies','search-configurations','companies','contacts','conversations'] as const;
 export type Resource=typeof resources[number];
 export type Entity=Vacancy|Configuration|Company|Contact|Conversation;
-export const names:Record<Resource,string>={vacancies:'Vacancies','search-configurations':'Search configurations',companies:'Companies',contacts:'Contacts',conversations:'Conversations'};
+export const names:Record<Resource,string>={vacancies:'Вакансии','search-configurations':'Профили поиска',companies:'Компании',contacts:'Контакты',conversations:'Переписки'};
 export interface RouteData {
  resource:Resource;record?:Entity;page?:Page<Entity>;companies:Company[];configs:Configuration[];contacts:Contact[];vacancies:Vacancy[];sources:Lookup[];channels:Lookup[];roles:Lookup[];
- discoveries?:Page<Discovery>;messages?:Page<Message>;panelError?:string
+ discoveries?:Page<Discovery>;messages?:Page<Message>;panelError?:string;statusHistory?:StatusChange[];statusHistoryError?:string
 }
 async function lookups(resource:Resource,signal:AbortSignal,full=false) {
  const [companies,configs,contacts,vacancies,sources,channels,roles]=await Promise.all([
@@ -43,7 +43,11 @@ function detailLoader(resource:Resource) {return async ({params,request}:LoaderF
  try {
   if(resource==='vacancies')panel={discoveries:await api<Page<Discovery>>(resource+'/'+params.id+'/discoveries'+search,{signal:request.signal})};
   if(resource==='conversations')panel={messages:await api<Page<Message>>(resource+'/'+params.id+'/messages'+search,{signal:request.signal})};
- }catch(e){if(e instanceof DOMException&&e.name==='AbortError')throw e;panel={panelError:'History could not be loaded. Refresh to retry.'};}
+ }catch(e){if(e instanceof DOMException&&e.name==='AbortError')throw e;panel={panelError:'Не удалось загрузить историю. Нажмите «Обновить», чтобы повторить.'};}
+ if(resource==='vacancies') {
+  try {panel.statusHistory=await all<StatusChange>(resource+'/'+params.id+'/status-history',request.signal);}
+  catch(e){if(e instanceof DOMException&&e.name==='AbortError')throw e;panel.statusHistoryError='Не удалось загрузить историю статусов. Нажмите «Обновить», чтобы повторить.';}
+ }
  return {resource,record:record.data,...refs,...panel};
 };}
 export const router=createBrowserRouter([{path:'/',Component:Layout,children:[
@@ -55,5 +59,5 @@ export const router=createBrowserRouter([{path:'/',Component:Layout,children:[
   {path:resource+'/:id',loader:detailLoader(resource),Component:DetailScreen,ErrorBoundary:RouteFailure},
   ...(resource!=='vacancies'&&resource!=='conversations'?[{path:resource+'/:id/edit',loader:entryLoader(resource),Component:EntryScreen,ErrorBoundary:RouteFailure}]:[]),
  ]),
- {path:'*',Component:()=> <section><h1>Page not found</h1><a href="/vacancies">Return to vacancies</a></section>},
+ {path:'*',Component:()=> <section><h1>Страница не найдена</h1><a href="/vacancies">Вернуться к вакансиям</a></section>},
 ]}]);

@@ -14,5 +14,6 @@ export interface Participant extends RecordBase {conversation_id:string;particip
 export interface Conversation extends RecordBase {company_id:string;vacancy_id:string|null;channel_id:string;external_conversation_id:string|null;subject:string|null;started_at:string|null;last_message_at:string|null;participants?:Participant[]}
 export interface Message extends RecordBase {conversation_id:string;sender_participant_id:string;sender_contact_id:string|null;direction:string;body:string;occurred_at:string;received_at:string}
 export interface Discovery extends RecordBase {vacancy_id:string;source_reference_id:string;observation_key:string;search_configuration_id:string|null;observed_at:string;criteria_snapshot:{criteria_version:number;criteria:Criteria}|null;normalized_payload:Json;source_payload?:Json}
+export interface StatusChange extends RecordBase {vacancy_id:string;previous_status:string;status:string;changed_at:string}
 export interface Page<T> {items:T[];next_cursor:string|null}
 export interface ApiProblem {code:string;message:string;fields:Record<string,string[]>;request_id?:string;retry_after_seconds?:number|null}

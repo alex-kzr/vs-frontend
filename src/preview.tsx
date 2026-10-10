@@ -3,6 +3,7 @@ import { Link } from 'react-router';
 import { all, api, ApiError } from './api';
 import type { ApiProblem, Company, HhCriteria, Json, Lookup } from './types';
 import { External, Problem, Select, useMutation } from './ui';
+import { valueLabel } from './i18n';
 
 interface Candidate {external_vacancy_id:string;external_url:string;company_name:string;vacancy:Record<string,Json> & {title:string;description:string|null;location:string|null;work_format:string|null};source_payload?:Record<string,Json>}
 interface Preview {adapter:string;live:boolean;configuration_id:string;scanned:number;matched:number;candidates:Candidate[];page?:number;found?:number;accessible_pages?:number;next_page?:number|null;skipped?:number;notice?:string;fetched_at?:string}
@@ -23,13 +24,13 @@ export function SearchPreview({configurationId,hh}: {configurationId:string;hh?:
  const active=useRef<{controller:AbortController;id:string;adapter:string}|null>(null);
  useEffect(()=>{
   const controller=new AbortController();
-  void api<HhStatus>('hh/status',{signal:controller.signal}).then(setStatus).catch(e=>{if(!controller.signal.aborted)setError(e instanceof ApiError?e.problem:{code:'status_error',message:'Could not load HH access status.',fields:{}});});
+  void api<HhStatus>('hh/status',{signal:controller.signal}).then(setStatus).catch(e=>{if(!controller.signal.aborted)setError(e instanceof ApiError?e.problem:{code:'status_error',message:'Не удалось проверить доступ к HH.',fields:{}});});
   return ()=>{controller.abort();const request=active.current;if(request){request.controller.abort();if(request.adapter==='hh')void api('hh/requests/'+request.id,{method:'DELETE'}).catch(()=>undefined);}};
  },[]);
  function stop() {
   const request=active.current;if(!request)return;
   request.controller.abort();if(request.adapter==='hh')void api('hh/requests/'+request.id,{method:'DELETE'}).catch(()=>undefined);
-  active.current=null;setPending(false);setMessage('Preview cancelled. Nothing was imported.');
+  active.current=null;setPending(false);setMessage('Просмотр отменён. Вакансии не импортированы.');
  }
  async function search(adapter:string,page=0) {
   stop();const request={controller:new AbortController(),id:crypto.randomUUID(),adapter};active.current=request;
@@ -40,22 +41,22 @@ export function SearchPreview({configurationId,hh}: {configurationId:string;hh?:
     all<Company>('companies',request.controller.signal),all<Lookup>('vacancy-sources',request.controller.signal),
    ]);
    if(active.current===request)setResult({preview,companies,sources,requestId:request.id});
-  }catch(e){if(!request.controller.signal.aborted)setError(e instanceof ApiError?e.problem:{code:'preview_error',message:'Could not load the preview. Retry manually.',fields:{}});}
+  }catch(e){if(!request.controller.signal.aborted)setError(e instanceof ApiError?e.problem:{code:'preview_error',message:'Не удалось загрузить просмотр. Повторите вручную.',fields:{}});}
   finally{if(active.current===request){active.current=null;setPending(false);}}
  }
- return <div className="panel"><h2>Search preview</h2>
-  <p className="hint">hh.ru uses the official API after access setup. Preview stores no vacancies; import only the candidates you select. Fixture search remains offline and synthetic.</p>
-  {status&&!status.configured&&<div className="empty-inline"><strong>HH access setup required</strong><p>{status.message}</p><p>Register your own application and configure authorized access locally using the README. Do not paste secrets into this UI.</p><External url={status.registration_url}>HH application registration</External> · <External url={status.terms_url}>HH API terms</External> · <External url={status.agreement_url}>Employment assistance agreement (offer)</External></div>}
-  {!hh?.text&&<p className="hint">Edit this configuration to add your own HH query and optional filters.</p>}
-  <div className="actions"><button disabled={pending||!status?.configured||!hh?.text} onClick={()=>void search('hh')}>Preview hh.ru</button>
-   <button className="secondary" disabled={pending} onClick={()=>void search('fixture-v1')}>Preview fixture search</button>
-   {pending&&<button className="secondary" onClick={stop}>Cancel preview</button>}</div>
-  <Problem error={error}/>{error?.retry_after_seconds&&<p role="status">Wait at least {error.retry_after_seconds} seconds before another request. There is no automatic retry.</p>}
-  <p role="status" aria-live="polite">{pending?'Loading one page…':message}</p>
-  {result&&<><p>{result.preview.live?result.preview.matched+' candidates on HH page '+((result.preview.page||0)+1)+'. '+result.preview.found+' found; '+result.preview.accessible_pages+' pages available within the local limit.':result.preview.matched+' of '+result.preview.scanned+' fixture vacancies match.'}</p>
-   {result.preview.notice&&<p className="hint">{result.preview.notice}</p>}{Boolean(result.preview.skipped)&&<p className="hint">{result.preview.skipped} duplicate or incompatible entries skipped.</p>}
+ return <div className="panel"><h2>Просмотр результатов поиска</h2>
+  <p className="hint">Для hh.ru требуется разрешённый доступ к официальному API. Просмотр не сохраняет вакансии; импортируйте только выбранные. Тестовые вакансии доступны без сети.</p>
+  {status&&!status.configured&&<div className="empty-inline"><strong>Требуется настройка доступа к HH</strong><p>{status.message.includes('HH_USER_AGENT')?'Проверьте HH_USER_AGENT: название и версия зарегистрированного приложения, контакт разработчика.':status.message.includes('HH_API_TOKEN')?'Проверьте локальную настройку разрешённого токена HH.':'Доступ к API HH не настроен. Требуется регистрация приложения и разрешённый доступ.'}</p><p>Зарегистрируйте своё приложение и настройте разрешённый доступ локально по README. Не вводите секреты в интерфейс.</p><External url={status.registration_url}>Регистрация приложения HH</External> · <External url={status.terms_url}>Условия API HH</External> · <External url={status.agreement_url}>Договор содействия трудоустройству (оферта)</External></div>}
+  {!hh?.text&&<p className="hint">Измените профиль, чтобы добавить свой запрос HH и фильтры.</p>}
+  <div className="actions"><button disabled={pending||!status?.configured||!hh?.text} onClick={()=>void search('hh')}>Просмотреть hh.ru</button>
+   <button className="secondary" disabled={pending} onClick={()=>void search('fixture-v1')}>Просмотреть тестовые вакансии</button>
+   {pending&&<button className="secondary" onClick={stop}>Отменить просмотр</button>}</div>
+  <Problem error={error}/>{error?.retry_after_seconds&&<p role="status">До следующего запроса подождите не менее {error.retry_after_seconds} секунд. Автоматического повтора нет.</p>}
+  <p role="status" aria-live="polite">{pending?'Загрузка одной страницы…':message}</p>
+  {result&&<><p>{result.preview.live?'На странице HH '+((result.preview.page||0)+1)+': '+result.preview.matched+' вакансий. Всего найдено '+result.preview.found+'; в пределах лимита доступно '+result.preview.accessible_pages+' страниц.':'Совпало '+result.preview.matched+' из '+result.preview.scanned+' тестовых вакансий.'}</p>
+   {result.preview.notice&&<p className="hint">Применяется синтаксис поиска HH. Описания представлены фрагментами. Результаты между страницами могут изменяться; автоматического импорта нет.</p>}{Boolean(result.preview.skipped)&&<p className="hint">Пропущено повторяющихся или несовместимых записей: {result.preview.skipped}.</p>}
    {result.preview.candidates.map(candidate=><CandidateImport key={result.requestId+candidate.external_vacancy_id} candidate={candidate} data={result}/>)}
-   {result.preview.live&&<div className="actions">{(result.preview.page||0)>0&&<button className="secondary" onClick={()=>void search('hh',(result.preview.page||0)-1)}>Previous HH page</button>}{result.preview.next_page!==null&&result.preview.next_page!==undefined&&<button className="secondary" onClick={()=>void search('hh',result.preview.next_page!)}>Next HH page</button>}</div>}
+   {result.preview.live&&<div className="actions">{(result.preview.page||0)>0&&<button className="secondary" onClick={()=>void search('hh',(result.preview.page||0)-1)}>Предыдущая страница HH</button>}{result.preview.next_page!==null&&result.preview.next_page!==undefined&&<button className="secondary" onClick={()=>void search('hh',result.preview.next_page!)}>Следующая страница HH</button>}</div>}
   </>}
  </div>;
 }
@@ -65,19 +66,19 @@ function CandidateImport({candidate,data}: {candidate:Candidate;data:PreviewResu
  const source=data.sources.find(s=>s.code===data.preview.adapter);
  const salary=candidate.source_payload?.salary as Record<string,Json>|null|undefined;
  const mode=salary?.mode as Record<string,Json>|null|undefined;
- return <article className="source"><h3>{candidate.vacancy.title}</h3><p>{candidate.company_name} · {candidate.vacancy.location||'Location not provided'} · {candidate.vacancy.work_format||'See source work formats'}</p>
-  <External url={candidate.external_url}>Open source vacancy</External>
-  {data.preview.live&&<p className="hint">HH search snippet, not the full vacancy description.</p>}<p className="preserve">{candidate.vacancy.description||'No snippet provided.'}</p>
-  {salary&&<p>HH salary: {String(salary.from??'not specified')}–{String(salary.to??'not specified')} {String(salary.currency||'')} · {salary.gross===true?'before tax':salary.gross===false?'after tax':'tax basis unspecified'} · {String(mode?.name||mode?.id||'period unspecified')}</p>}
-  {success?<p role="status">Imported to SQLite. <Link to={'/vacancies/'+success.vacancy_id}>Open vacancy →</Link></p>:<>
+ return <article className="source"><h3>{candidate.vacancy.title}</h3><p>{candidate.company_name} · {candidate.vacancy.location||'Место не указано'} · {candidate.vacancy.work_format?valueLabel(candidate.vacancy.work_format):'См. формат работы в источнике'}</p>
+  <External url={candidate.external_url}>Открыть вакансию в источнике</External>
+  {data.preview.live&&<p className="hint">Фрагмент поисковой выдачи HH; полное описание смотрите в источнике.</p>}<p className="preserve">{candidate.vacancy.description||'Фрагмент описания отсутствует.'}</p>
+  {salary&&<p>Зарплата HH: {String(salary.from??'не указано')}–{String(salary.to??'не указано')} {String(salary.currency||'')} · {salary.gross===true?'до налогов':salary.gross===false?'после налогов':'налоги не указаны'} · {mode?.id?valueLabel(String(mode.id)):'период не указан'}</p>}
+  {success?<p role="status">Импортировано в SQLite. <Link to={'/vacancies/'+success.vacancy_id}>Открыть вакансию →</Link></p>:<>
    <Problem error={mutation.error}/>
-   <Select label={'Import company for '+candidate.external_vacancy_id} name={'company-'+candidate.external_vacancy_id} options={data.companies.map(c=>({id:c.id,label:c.name}))} required onChange={setCompanyId}/>
-   <p className="hint">Explicitly select the matching company. Names are never merged automatically.</p>
+   <Select label={'Компания для импорта '+candidate.external_vacancy_id} name={'company-'+candidate.external_vacancy_id} options={data.companies.map(c=>({id:c.id,label:c.name}))} required onChange={setCompanyId}/>
+   <p className="hint">Выберите соответствующую компанию. Совпадение названий не объединяет компании автоматически.</p>
    <button disabled={!companyId||!source||mutation.pending} onClick={()=>mutation.submit('vacancy-source-references','POST',{
     source_id:source!.id,external_vacancy_id:candidate.external_vacancy_id,external_url:candidate.external_url,
     vacancy:{...candidate.vacancy,company_id:companyId},observation:{observation_key:observation.key,observed_at:observation.time,search_configuration_id:data.preview.configuration_id,...(candidate.source_payload?{source_payload:candidate.source_payload}:{})},
-   })}>{mutation.pending?'Saving…':'Import selected candidate'}</button>{data.companies.length===0&&<Link to="/companies/new">Create a company first</Link>}
-   {mutation.error&&<button className="secondary" onClick={mutation.retry} disabled={mutation.pending}>Retry previous submission</button>}
+   })}>{mutation.pending?'Сохранение…':'Импортировать выбранную вакансию'}</button>{data.companies.length===0&&<Link to="/companies/new">Сначала создайте компанию</Link>}
+   {mutation.error&&<button className="secondary" onClick={mutation.retry} disabled={mutation.pending}>Повторить предыдущий запрос</button>}
   </>}
  </article>;
 }

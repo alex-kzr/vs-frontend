@@ -23,7 +23,7 @@ HH browser responses in smoke tests are synthetic; live API availability and app
 
 ## Browser smoke
 
-Start Rust with VACANCY_DB pointing to a new disposable file and the default port, after building this frontend. Then:
+Prefer ../../scripts/check.ps1: it builds the app, creates a new disposable database and starts its own server on a free 48174–48189 port. For manual smoke set VACANCY_DB to a disposable file and VACANCY_TEST_URL to that isolated server. Never use the operational 48173 database. Then:
 
 ```powershell
 npx playwright install chromium
@@ -32,4 +32,6 @@ npm run smoke
 
 Smoke writes synthetic records; never point it at the personal operational database. Tests cover full search/import/status/contact/conversation flows, lost response with exact-token retry, cancel protection, validation conflict retention, 404, duplicate observations and filter Back. Evidence goes to ignored test-results/.
 
-Unit tests are discovered separately under src/. No external accounts/API credentials are needed. Current gate: 7 unit tests and 7 Chromium workflows pass, including HH criteria/import/history, cancellation/rate-limit recovery and disabled setup with fixture fallback.
+Unit tests are discovered separately under src/. No external accounts/API credentials are needed. The Russian UI gate is recorded in ../../docs/architecture/localization-and-statuses.md. The previous baseline had 7 unit tests and 7 Chromium workflows, including HH criteria/import/history, cancellation/rate-limit recovery and disabled setup with fixture fallback.
+
+Russian UI uses src/i18n.ts for status/format/direction/lookup presentation and safe errors. User text and raw provenance are retained. Detail radio choices show both refusal parties; legacy rejected stays unspecified. History reloads after successful PATCH. The user release app always runs at 127.0.0.1:48173.

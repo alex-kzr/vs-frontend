@@ -29,6 +29,6 @@ it('filters reset pagination and preserve literal text',()=>{
  expect(cleanFilters(new URLSearchParams('q=Rust%25&status=saved&cursor=old&company_id='),['q','status','company_id']).toString()).toBe('q=Rust%25&status=saved');
 });
 it('requires an occurrence time',()=>{
- expect(()=>toUtc('')).toThrow('Select an occurrence time.');
+ expect(()=>toUtc('')).toThrow('Укажите дату и время.');
  expect(toUtc('2026-10-09T12:00:00Z')).toBe('2026-10-09T12:00:00.000Z');
 });

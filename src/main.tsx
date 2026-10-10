@@ -5,5 +5,5 @@ import { router } from './routes';
 import './style.css';
 
 const root=document.getElementById('root');
-if(!root)throw new Error('Application root is absent.');
+if(!root)throw new Error('Корневой элемент приложения отсутствует.');
 createRoot(root).render(<StrictMode><RouterProvider router={router}/></StrictMode>);

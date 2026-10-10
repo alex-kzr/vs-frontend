@@ -9,15 +9,15 @@ export async function api<T>(path:string, options:RequestInit = {}):Promise<T> {
     response=await fetch('/api/v1/'+path,options);
   } catch (error) {
     if (error instanceof DOMException && error.name==='AbortError') throw error;
-    throw new ApiError(0,{code:'network_error',message:'Connection lost. Your draft is retained; retry the same submission.',fields:{}});
+    throw new ApiError(0,{code:'network_error',message:'Соединение потеряно. Черновик сохранён; повторите тот же запрос.',fields:{}});
   }
   const result:unknown=await response.json().catch(()=>null);
   if (!response.ok) {
     const problem=result && typeof result==='object' && 'error' in result ? result.error as ApiProblem :
-      {code:'invalid_response',message:'The server returned an unreadable error.',fields:{}};
+      {code:'invalid_response',message:'Сервер вернул некорректную ошибку.',fields:{}};
     throw new ApiError(response.status,problem);
   }
-  if (!result || typeof result!=='object') throw new ApiError(0,{code:'invalid_response',message:'Cannot confirm the operation. Retry the same submission.',fields:{}});
+  if (!result || typeof result!=='object') throw new ApiError(0,{code:'invalid_response',message:'Не удалось подтвердить операцию. Повторите тот же запрос.',fields:{}});
   return result as T;
 }
 export async function all<T>(path:string, signal:AbortSignal):Promise<T[]> {
@@ -35,6 +35,6 @@ export function cleanFilters(parameters:URLSearchParams,allowed:readonly string[
 }
 export function toUtc(value:string):string {
   const date=new Date(value);
-  if (!value || Number.isNaN(date.valueOf())) throw new Error('Select an occurrence time.');
+  if (!value || Number.isNaN(date.valueOf())) throw new Error('Укажите дату и время.');
   return date.toISOString();
 }
