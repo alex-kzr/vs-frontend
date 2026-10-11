@@ -28,3 +28,5 @@
 .filter-no-results{font-size:.8rem;color:#7b8e78;margin:12px 0}
 .filter-selected-names{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:220px;font-size:.7rem;margin-top:5px}
 @media(max-width:700px){.filter-popover{width:280px}.checkbox-filter{flex-basis:100%}.filter-selected-names{max-width:100%}}
+
+.cv-content{max-height:600px;overflow:auto;padding:12px;background:#f6f8f2;border-radius:6px}.evidence{margin:12px 0;border-left:3px solid #a9be8b;padding:10px 15px;background:#f6f8f2}.evidence small{color:#637b60}.evidence p{margin:6px 0 0}

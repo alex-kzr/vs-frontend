@@ -13,7 +13,7 @@ import { External, Field, Problem, Refresh, SaveForm, Select,TextArea,Time,choic
 export function Layout() {
  const navigation=useNavigation();
  return <div className="app"><aside><Link className="brand" to="/vacancies"><span className="brand-icon">V</span><span>Поиск<br/><b>вакансий</b></span></Link><p className="sidebar-label">РАБОЧАЯ ОБЛАСТЬ</p>
-  <nav aria-label="Основное меню">{resources.map((resource,i)=><NavLink key={resource} to={'/'+resource}><span className="nav-number">0{i+1}</span>{names[resource]}</NavLink>)}</nav>
+  <nav aria-label="Основное меню">{resources.map((resource,i)=><NavLink key={resource} to={'/'+resource}><span className="nav-number">0{i+1}</span>{names[resource]}</NavLink>)}<NavLink to="/cvs"><span className="nav-number">06</span>Мои CV</NavLink><NavLink to="/match-runs"><span className="nav-number">07</span>Сопоставления</NavLink></nav>
   <div className="local-note"><span className="dot"/> Локальная база SQLite<br/><small>Ручные записи · Только на этом компьютере</small></div></aside>
   <main><header className="topbar"><span>КАРЬЕРА / ДЕЙСТВИЯ</span><span>Личная рабочая область</span></header>
    {navigation.state!=='idle'&&<p role="status" className="loading">Загрузка / обновление…</p>}<Outlet/></main></div>;

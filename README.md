@@ -15,7 +15,7 @@ npm run build
 
 Development uses http://127.0.0.1:45173 and a /api proxy to 127.0.0.1:48173. strictPort prevents taking a different port silently. Production dist is served by Rust on the same origin.
 
-Five feature areas: vacancies, criteria, companies, contacts and recorded conversations. Loaders propagate AbortSignal. Actions own persistence and revalidation; drafts and retry keys remain in memory on failures. No message body/contact details are persisted in browser storage. Record message never sends anything externally.
+Seven feature areas: vacancies, criteria, companies, contacts, recorded conversations, CVs and explicit matching history. Loaders propagate AbortSignal. Actions own persistence and revalidation; drafts and retry keys remain in memory on failures. No message body/contact details are persisted in browser storage. Record message never sends anything externally.
 
 Fixture-v1 preview applies saved criteria and imports selected synthetic records into an explicitly selected company. Optional HH criteria support the user's query, named regions and current provider filters, with manual page navigation, cancellation and selective import. HH access status is displayed, with preview disabled when local setup is absent. No credential entry form, automatic pagination or retry exists. Search snippets and original salary/source metadata are labelled and preserved.
 
@@ -43,3 +43,7 @@ All client receipt/entity/request UUIDs use src/identity.ts. The native secure-c
 ## Multi-value filters
 
 src/filter-select.tsx exports CheckboxFilter (small lists, no search) and SearchableCheckboxFilter (large lists, internal name search). Status/company list filters preserve selection across searches, URL pagination, Back/Forward and reload. Native keyboard disclosure and checkboxes, Russian labels and per-filter clearing are supported. Apply preserves profile/source/page size and resets the cursor. Current checks: 16 unit tests and 13 Chromium workflows; see ../../docs/roadmap/multi-filters.md.
+
+## CV / matching UI
+
+src/cvs.tsx provides text/.txt/.md import preview, confirmation, immutable version edits and history. src/matching.tsx requires an explicit CV/selection preview and confirmation, then exposes pinned JSON inputs, external-agent results/citations, attempt history, retry/cancellation and staleness. Import/edit does not start matching. Direct HH resume extraction and in-app LLM execution are absent; synthetic results are visibly labelled. No CV is stored in browser local/session storage. Isolated tests/cv-matching.spec.ts covers file preview, lost response replay, old revisions, saved selection, partial retry, cancellation, quotes, staleness and draft recovery. Current suite: 16 unit tests and 17 Chromium scenarios; see ../../docs/roadmap/cv-matching-verification.md.
