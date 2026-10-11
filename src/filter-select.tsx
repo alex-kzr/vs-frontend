@@ -4,13 +4,15 @@ interface FilterChoice { id:string; label:string }
 interface FilterProps {
  label:string; name:string; options:readonly FilterChoice[]; selected:readonly string[];
 }
-type BaseProps=FilterProps & ({variant:'checkboxes'}|{variant:'searchable';searchLabel:string});
+type BaseProps=FilterProps & ({variant:'checkboxes'}|{variant:'searchable';searchLabel:string;searchQuery?:string;onSearchQueryChange?:(query:string)=>void});
 
 function CheckboxFilterBase(props:BaseProps) {
  const {label,name,options}=props;
  const id=useId();
  const [selected,setSelected]=useState(()=>new Set(props.selected));
- const [query,setQuery]=useState('');
+ const [localQuery,setQuery]=useState('');
+ const query=props.variant==='searchable'?props.searchQuery??localQuery:localQuery;
+ function changeQuery(value:string){setQuery(value);if(props.variant==='searchable')props.onSearchQueryChange?.(value);}
  const [open,setOpen]=useState(false);
  const selectedLabels=[...selected].map(value=>options.find(option=>option.id===value)?.label||'Неизвестное значение');
  const summary=selected.size===0?'Все':selected.size===1?selectedLabels[0]:'Выбрано: '+selected.size;
@@ -37,7 +39,7 @@ function CheckboxFilterBase(props:BaseProps) {
      <button type="button" className="secondary filter-clear" disabled={!selected.size} onClick={()=>setSelected(new Set())}>Очистить выбор</button>
     </div>
     {props.variant==='searchable'&&<label className="field filter-search" htmlFor={id+'-search'}><span>{props.searchLabel}</span>
-     <input id={id+'-search'} type="search" autoComplete="off" placeholder={props.searchLabel==='Поиск компаний'?'Название компании…':'Поиск…'} value={query} onChange={event=>setQuery(event.currentTarget.value)}/>
+     <input id={id+'-search'} type="search" autoComplete="off" placeholder={props.searchLabel==='Поиск компаний'?'Название компании…':'Поиск…'} value={query} onChange={event=>changeQuery(event.currentTarget.value)}/>
     </label>}
     <fieldset className="filter-options" aria-labelledby={id+'-caption'}>
      {visible.map(option=><label className="filter-option" key={option.id}>
@@ -53,6 +55,6 @@ function CheckboxFilterBase(props:BaseProps) {
 export function CheckboxFilter(props:FilterProps) {
  return <CheckboxFilterBase {...props} variant="checkboxes"/>;
 }
-export function SearchableCheckboxFilter(props:FilterProps & {searchLabel:string}) {
+export function SearchableCheckboxFilter(props:FilterProps & {searchLabel:string;searchQuery?:string;onSearchQueryChange?:(query:string)=>void}) {
  return <CheckboxFilterBase {...props} variant="searchable"/>;
 }

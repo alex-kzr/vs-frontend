@@ -1,4 +1,4 @@
-import { test,expect,type APIRequestContext } from '@playwright/test';
+import { test,expect,type APIRequestContext,type Page } from '@playwright/test';
 test.beforeEach(async({baseURL})=>{const u=new URL(baseURL!);if(u.hostname!=='127.0.0.1'||u.port==='48173')throw new Error('CV management smoke requires an isolated fixture server.');});
 type CV={id:string;name:string;current_revision_id:string;current_revision_number:number;lifecycle_version:number;deleted_at:string|null;source_code:string;source_url:string|null;revision:{content:string;source:{kind:string}}};
 async function post(request:APIRequestContext,path:string,data:unknown):Promise<CV> {const r=await request.post('/api/v1/'+path,{headers:{'Idempotency-Key':crypto.randomUUID()},data});expect(r.ok(),path+': '+r.status()).toBeTruthy();return (await r.json()).data;}
@@ -6,23 +6,33 @@ async function detail(request:APIRequestContext,id:string):Promise<CV> {return (
 function input(source='manual') {const key=crypto.randomUUID();return {name:'Synthetic lifecycle '+key,hh_url:source==='hh.ru'?'https://hh.ru/resume/synthetic_'+key:null,source_code:source,source_url:source==='hh.ru'?'https://hh.ru/resume/synthetic_'+key:null,content:'Synthetic Rust CV. Persistent history.',structured:{skills:['Rust']},source:{kind:'manual_text',observed_at:new Date().toISOString()},confirmed:true};}
 async function createCv(request:APIRequestContext,data:unknown){const c=await post(request,'cvs',data);return detail(request,c.id);}
 function lifecycle(cv:CV){return {confirmed:true,expected_revision_id:cv.current_revision_id,expected_lifecycle_version:cv.lifecycle_version};}
-test('delete cancel, Escape, filtered deleted view, restore and history preserve one CV',async({page,request})=>{
+async function setStates(page:Page,states:string[]){
+ await page.getByRole('button',{name:/^Состояние CV:/}).click();
+ for(const [state,label] of [['active','Активные'],['deleted','Удалённые']])await page.getByRole('checkbox',{name:label,exact:true}).setChecked(states.includes(state));
+ await page.keyboard.press('Escape');await page.getByRole('button',{name:'Применить фильтры',exact:true}).click();
+ await expect(page).toHaveURL(states.length?new RegExp('cv_state='+states[0]):/cv_state=all/);
+}
+test('mixed state filter cancels delete and restores CV with source search and history intact',async({page,request})=>{
  const c=await createCv(request,input('hh.ru'));let writes=0;page.on('request',r=>{if(r.method()==='POST'&&/\/(delete|restore)$/.test(r.url()))writes++;});
- await page.goto('/cvs?source_code=hh.ru');
+ for(let i=0;i<4;i++)await createCv(request,input('mixed-'+i+'-'+crypto.randomUUID()+'.test'));
+ await page.goto('/cvs?source_code=hh.ru');await expect(page.getByRole('button',{name:'Состояние CV: Активные',exact:true})).toBeVisible();
+ await expect(page.getByRole('link',{name:'Активные CV',exact:true})).toHaveCount(0);await expect(page.getByRole('link',{name:'Удалённые CV',exact:true})).toHaveCount(0);
+ await page.getByRole('button',{name:'Источник CV: hh.ru',exact:true}).click();await page.getByLabel('Поиск источников CV',{exact:true}).fill('hh');await page.keyboard.press('Escape');
+ await setStates(page,['active','deleted']);await expect(page).toHaveURL(/source_search=hh/);const listUrl=page.url();
  const row=page.locator('.record-row').filter({hasText:c.name});await expect(row).toContainText('hh.ru');await expect(row).not.toContainText('https://');
  await row.click();await page.getByRole('button',{name:'Удалить CV',exact:true}).click();
  await expect(page.getByRole('dialog')).toBeVisible();await page.getByRole('button',{name:'Отмена',exact:true}).click();
  await page.getByRole('button',{name:'Удалить CV',exact:true}).click();await page.keyboard.press('Escape');await expect(page.getByRole('dialog')).not.toBeVisible();expect(writes).toBe(0);
- await page.getByRole('button',{name:'Удалить CV',exact:true}).click();await page.getByRole('button',{name:'Подтвердить удаление',exact:true}).click();
- await expect(page.getByRole('button',{name:'Восстановить CV',exact:true})).toBeVisible();expect(writes).toBe(1);
+ await page.getByRole('button',{name:'Удалить CV',exact:true}).click();await page.getByRole('button',{name:'Подтвердить удаление',exact:true}).click();await expect(page.getByRole('button',{name:'Восстановить CV',exact:true})).toBeVisible();expect(writes).toBe(1);
  await expect(page.getByRole('link',{name:'Создать новую версию',exact:true})).toHaveCount(0);
  await page.getByRole('link',{name:'Версия 1 · '+c.name,exact:true}).click();await expect(page.locator('.cv-content')).toHaveText(c.revision.content);
- await page.getByRole('link',{name:'← Удалённые CV',exact:true}).click();await expect(page).toHaveURL(/deleted=true/);await expect(page).toHaveURL(/source_code=hh.ru/);await expect(page.locator('.record-row').filter({hasText:c.name})).toBeVisible();
- await page.getByRole('link',{name:'Активные CV',exact:true}).click();await expect(page.locator('.record-row').filter({hasText:c.name})).toHaveCount(0);
- await page.goBack();await expect(page.getByRole('heading',{name:'Удалённые CV',exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'Источник CV: hh.ru',exact:true})).toBeVisible();
+ await page.getByRole('link',{name:'← Мои CV',exact:true}).click();await expect(page).toHaveURL(listUrl);await expect(page.getByRole('button',{name:'Состояние CV: Выбрано: 2',exact:true})).toBeVisible();
+ await expect(page.locator('.record-row').filter({hasText:c.name})).toContainText('Удалено');
+ await page.getByRole('button',{name:'Источник CV: hh.ru',exact:true}).click();await expect(page.getByLabel('Поиск источников CV',{exact:true})).toHaveValue('hh');await page.keyboard.press('Escape');
  await page.locator('.record-row').filter({hasText:c.name}).click();await page.getByRole('button',{name:'Восстановить CV',exact:true}).click();await expect(page.getByRole('button',{name:'Удалить CV',exact:true})).toBeVisible();
  const restored=await detail(request,c.id);expect(restored.deleted_at).toBeNull();expect(restored.lifecycle_version).toBe(2);expect(restored.current_revision_id).toBe(c.current_revision_id);expect(restored.revision).toEqual(c.revision);
- await page.getByRole('link',{name:'← Мои CV',exact:true}).click();await expect(page).toHaveURL(/source_code=hh.ru/);await expect(page).not.toHaveURL(/deleted=true/);
+ await page.getByRole('link',{name:'← Мои CV',exact:true}).click();await expect(page).toHaveURL(listUrl);await expect(page.locator('.record-row').filter({hasText:c.name})).toContainText('Активное');
+ await page.getByRole('button',{name:'Источник CV: hh.ru',exact:true}).click();await expect(page.getByLabel('Поиск источников CV',{exact:true})).toHaveValue('hh');await page.keyboard.press('Escape');
  await page.setViewportSize({width:390,height:844});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=document.documentElement.clientWidth)).toBeTruthy();
 });
 test('lost delete response retries the same request UUID once and does not create revisions',async({page,request})=>{
@@ -52,9 +62,9 @@ test('explicit origin import and source multiselect persist across views and bro
  for(const source of ['jobs-a.test','jobs-b.test','jobs-c.test','jobs-d.test'])await post(request,'cvs',input(source));
  await page.goto('/cvs');await page.getByRole('button',{name:'Источник CV: Все',exact:true}).click();await page.getByLabel('Поиск источников CV',{exact:true}).fill('skill');await page.getByRole('checkbox',{name:'skillstaff.ru',exact:true}).check();await page.getByLabel('Поиск источников CV',{exact:true}).fill('hh');await page.getByRole('checkbox',{name:'hh.ru',exact:true}).check();await page.keyboard.press('Escape');
  await page.getByRole('button',{name:'Применить фильтры',exact:true}).click();await expect(page.getByRole('button',{name:'Источник CV: Выбрано: 2',exact:true})).toBeVisible();await expect(page.locator('.record-row').filter({hasText:name})).toBeVisible();
- await page.getByRole('link',{name:'Удалённые CV',exact:true}).click();await expect(page).toHaveURL(/deleted=true/);await expect(page.getByRole('button',{name:'Источник CV: Выбрано: 2',exact:true})).toBeVisible();
+ await setStates(page,['deleted']);await expect(page).toHaveURL(/source_search=hh/);await expect(page.getByRole('button',{name:'Источник CV: Выбрано: 2',exact:true})).toBeVisible();
  await page.goBack();await expect(page.getByRole('heading',{name:'Мои CV',exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'Источник CV: Выбрано: 2',exact:true})).toBeVisible();
- await page.goForward();await expect(page.getByRole('heading',{name:'Удалённые CV',exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'Источник CV: Выбрано: 2',exact:true})).toBeVisible();
+ await page.goForward();await expect(page.getByRole('button',{name:'Состояние CV: Удалённые',exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'Источник CV: Выбрано: 2',exact:true})).toBeVisible();
 });
 test('deleted CV blocks a stale new batch while an existing packet keeps pinned inputs',async({page,request})=>{
  const c=await createCv(request,input());const suffix=crypto.randomUUID();
@@ -68,4 +78,15 @@ test('deleted CV blocks a stale new batch while an existing packet keeps pinned 
  await page.goto('/match-runs/'+run.id);await expect(page.getByText(/Этот пакет продолжает работу с сохранёнными входами/)).toBeVisible();await expect(page.getByRole('link',{name:'Создать ещё пакет',exact:true})).toHaveCount(0);
  const packet=(await (await request.get('/api/v1/match-runs/'+run.id+'/inputs')).json()).data;expect(packet.cv_revision.content).toBe(c.revision.content);
  await page.getByRole('link',{name:'Открыть версию CV',exact:true}).click();await expect(page.locator('.cv-content')).toHaveText(c.revision.content);
+});
+
+test('empty state selection means all, source reset retains state and legacy deleted links remain readable',async({page,request})=>{
+ const source='state-empty-'+crypto.randomUUID()+'.test';const active=await createCv(request,input(source));const removed=await createCv(request,input(source));await post(request,'cvs/'+removed.id+'/delete',lifecycle(removed));
+ await page.goto('/cvs?deleted=true&source_code='+source);await expect(page.getByRole('button',{name:'Состояние CV: Удалённые',exact:true})).toBeVisible();
+ await expect(page.locator('.record-row').filter({hasText:removed.name})).toBeVisible();await expect(page.locator('.record-row').filter({hasText:active.name})).toHaveCount(0);
+ await setStates(page,[]);await expect(page.getByRole('button',{name:'Состояние CV: Все',exact:true})).toBeVisible();await expect(page.getByText(/Обе галочки или пустой выбор состояния показывают все CV/)).toBeVisible();
+ await expect(page.locator('.record-row')).toHaveCount(2);await expect(page.locator('.record-row').filter({hasText:removed.name})).toContainText('Удалено');await expect(page.locator('.record-row').filter({hasText:active.name})).toContainText('Активное');
+ await setStates(page,['active']);await expect(page.locator('.record-row')).toHaveCount(1);await expect(page.locator('.record-row').filter({hasText:removed.name})).toHaveCount(0);
+ await setStates(page,['deleted']);await page.getByRole('link',{name:'Сбросить источник',exact:true}).click();await expect(page).not.toHaveURL(/source_code=/);await expect(page.getByRole('button',{name:'Состояние CV: Удалённые',exact:true})).toBeVisible();
+ await page.goto('/cvs');await expect(page.getByRole('button',{name:'Состояние CV: Активные',exact:true})).toBeVisible();
 });
