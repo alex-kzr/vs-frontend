@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState, type FormEvent, type ChangeEvent } from 'react';
-import { Link, useLoaderData, useNavigate, type LoaderFunctionArgs } from 'react-router';
+import { Link, useLoaderData, useLocation, useNavigate, type LoaderFunctionArgs } from 'react-router';
+import { CheckboxFilter, SearchableCheckboxFilter } from './filter-select';
 import { api, all, ApiError } from './api';
 import { clientUuid } from './identity';
 import { DraftGuard, External, Field, Problem, Refresh, Time, useMutation } from './ui';
 import type { ApiProblem, Json } from './types';
-import type { CV, CVRevision, RevisionMeta } from './cv-types';
-import { sourceKinds } from './cv-types';
+import type { CV, CVOrigin, CVRevision, RevisionMeta } from './cv-types';
+import { sourceKinds, sourceLabel } from './cv-types';
 
 type DetailData={cv:CV;revisions:RevisionMeta[];revision:CVRevision};
 async function detailLoader({params,request}:LoaderFunctionArgs):Promise<DetailData> {
@@ -14,26 +15,53 @@ async function detailLoader({params,request}:LoaderFunctionArgs):Promise<DetailD
  const revision=params.revisionId?(await api<{data:CVRevision}>('cvs/'+params.id+'/revisions/'+params.revisionId,{signal:request.signal})).data:cv.revision!;
  return {cv,revisions,revision};
 }
+interface ListData {cvs:CV[];sources:CVOrigin[];deleted:boolean}
+interface ImportData {cv:CV|null;sources:CVOrigin[]}
 function CVList() {
- const cvs=useLoaderData<CV[]>();
- return <section className="page"><div className="page-title"><div><h1>Мои CV</h1><p className="lede">Отдельные резюме, версии и происхождение содержимого.</p></div><Link className="button" to="/cvs/new">+ Импортировать CV</Link></div>
- <p className="hint">Импорт и редактирование сохраняют данные локально. Сопоставление создаётся отдельным действием в разделе «Сопоставления».</p><Refresh/>
- {!cvs.length?<div className="empty"><h2>Пока нет CV</h2><p>Вставьте проверенный текст или выберите файл .txt / .md.</p><Link className="button" to="/cvs/new">Импортировать первое CV</Link></div>:<div className="record-list">{cvs.map(cv=><Link className="record-row" key={cv.id} to={'/cvs/'+cv.id}><div className="record-main"><h3>{cv.name}</h3><p>{cv.hh_url||'Ссылка HH не указана'}</p></div><div className="record-meta"><span>Версия {cv.current_revision_number}</span><Time value={cv.imported_at}/></div></Link>)}</div>}
+ const {cvs,sources,deleted}=useLoaderData<ListData>();const location=useLocation();const navigate=useNavigate();
+ const params=new URLSearchParams(location.search);const selected=params.getAll('source_code');
+ const options=sources.map(s=>({id:s.code,label:s.label}));
+ function viewTo(removed:boolean){const p=new URLSearchParams(location.search);p.delete('cursor');if(removed)p.set('deleted','true');else p.delete('deleted');return '/cvs'+(p.size?'?'+p:'');}
+ function apply(event:FormEvent<HTMLFormElement>){event.preventDefault();const p=new URLSearchParams(location.search);p.delete('cursor');p.delete('source_code');for(const value of new FormData(event.currentTarget).getAll('source_code'))p.append('source_code',String(value));void navigate('/cvs'+(p.size?'?'+p:''));}
+ return <section className="page"><div className="page-title"><div><h1>{deleted?'Удалённые CV':'Мои CV'}</h1><p className="lede">Отдельные резюме, версии и происхождение содержимого.</p></div><Link className="button" to="/cvs/new">+ Импортировать CV</Link></div>
+ <nav className="actions" aria-label="Списки CV"><Link className="button secondary" aria-current={!deleted?'page':undefined} to={viewTo(false)}>Активные CV</Link><Link className="button secondary" aria-current={deleted?'page':undefined} to={viewTo(true)}>Удалённые CV</Link><Refresh/></nav>
+ <form className="filters panel" key={location.search} onSubmit={apply}>
+ {sources.length>6?<SearchableCheckboxFilter label="Источник CV" name="source_code" options={options} selected={selected} searchLabel="Поиск источников CV"/>:<CheckboxFilter label="Источник CV" name="source_code" options={options} selected={selected}/>}
+ <button>Применить фильтры</button>{selected.length>0&&<Link className="button secondary" to={'/cvs'+(deleted?'?deleted=true':'')}>Сбросить источник</Link>}</form>
+ <p className="hint">{deleted?'Откройте CV и нажмите «Восстановить CV». Все версии и прежние пакеты сохраняются.':'Импорт сохраняет данные локально. Удаление можно отменить восстановлением; сопоставление создаётся отдельно.'}</p>
+ {!cvs.length?<div className="empty"><h2>{selected.length?'CV по выбранным условиям нет':deleted?'Удалённых CV нет':'Пока нет CV'}</h2>{!deleted&&!selected.length&&<Link className="button" to="/cvs/new">Импортировать первое CV</Link>}</div>:<div className="record-list">{cvs.map(cv=><Link className="record-row" key={cv.id} to={'/cvs/'+cv.id} state={{cvListSearch:location.search}}><div className="record-main"><h3>{cv.name}</h3><p>{sourceLabel(cv.source_code)}</p></div><div className="record-meta"><span>Версия {cv.current_revision_number}</span>{deleted?<><span>Удалено</span><Time value={cv.deleted_at}/></>:<Time value={cv.imported_at}/>}</div></Link>)}</div>}
  </section>;
+}
+function CVLifecycle({cv}:{cv:CV}) {
+ const mutation=useMutation();const dialog=useRef<HTMLDialogElement>(null);const [confirming,setConfirming]=useState(false);
+ const deleted=!!cv.deleted_at;const body={confirmed:true,expected_revision_id:cv.current_revision_id,expected_lifecycle_version:cv.lifecycle_version};
+ useEffect(()=>{if(mutation.result?.ok)dialog.current?.close();},[mutation.result]);
+ function open(){setConfirming(true);dialog.current?.showModal();}
+ function act(){if(!mutation.pending)mutation.submit('cvs/'+cv.id+(deleted?'/restore':'/delete'),'POST',body);}
+ return <div><Problem error={confirming?null:mutation.error}/><button type="button" className={deleted?'button':'secondary danger'} disabled={mutation.pending} onClick={deleted?act:open}>{mutation.pending?'Сохранение…':deleted?'Восстановить CV':'Удалить CV'}</button>
+ {!confirming&&mutation.error&&<button type="button" className="secondary" disabled={mutation.pending} onClick={mutation.retry}>Повторить предыдущий запрос</button>}
+ <dialog className="cv-dialog" ref={dialog} aria-labelledby="cv-delete-title" onClose={()=>setConfirming(false)} onCancel={event=>{if(mutation.pending)event.preventDefault();}}>
+ <h2 id="cv-delete-title">Удалить CV?</h2><p>«{cv.name}» исчезнет из активного списка и выбора для нового сопоставления. Его можно восстановить в разделе «Удалённые CV».</p><p>Все версии и происхождение сохраняются. Уже созданные пакеты продолжат работу со своими зафиксированными входами.</p><Problem error={confirming?mutation.error:null}/>
+ <div className="actions"><button type="button" className="secondary" disabled={mutation.pending} onClick={()=>dialog.current?.close()}>Отмена</button><button type="button" className="danger" disabled={mutation.pending} onClick={act}>{mutation.pending?'Удаление…':'Подтвердить удаление'}</button>{mutation.error&&<button type="button" className="secondary" disabled={mutation.pending} onClick={mutation.retry}>Повторить предыдущий запрос</button>}</div></dialog></div>;
 }
 export function RevisionContent({revision}:{revision:CVRevision}) {
  return <><div className="panel"><h2>Содержимое CV · версия {revision.revision_number}</h2><p className="preserve cv-content" id="cv-content">{revision.content}</p><h3>Структурированные сведения</h3><pre>{JSON.stringify(revision.structured,null,2)}</pre></div>
- <div className="panel"><h2>Происхождение версии</h2><dl><dt>Способ</dt><dd>{sourceKinds[revision.source.kind]||revision.source.kind}</dd><dt>Просмотр / ввод</dt><dd><Time value={revision.source.observed_at}/></dd><dt>Импорт в базу</dt><dd><Time value={revision.imported_at}/></dd><dt>Ссылка HH</dt><dd><External url={revision.hh_url}/></dd>{revision.source.file_name&&<><dt>Файл</dt><dd>{revision.source.file_name}</dd></>}{revision.source.agent&&<><dt>Агент</dt><dd>{revision.source.agent}</dd></>}</dl></div></>;
+ <div className="panel"><h2>Происхождение версии</h2><dl><dt>Источник CV</dt><dd>{sourceLabel(revision.source_code||(revision.hh_url?'hh.ru':'manual'))}</dd><dt>Способ импорта</dt><dd>{sourceKinds[revision.source.kind]||revision.source.kind}</dd><dt>Просмотр / ввод</dt><dd><Time value={revision.source.observed_at}/></dd><dt>Импорт в базу</dt><dd><Time value={revision.imported_at}/></dd><dt>Ссылка источника</dt><dd><External url={revision.source_url||revision.hh_url}/></dd>{revision.external_id&&<><dt>Внешний ID</dt><dd>{revision.external_id}</dd></>}{revision.source.file_name&&<><dt>Файл</dt><dd>{revision.source.file_name}</dd></>}{revision.source.agent&&<><dt>Агент</dt><dd>{revision.source.agent}</dd></>}</dl></div></>;
 }
 function CVDetail() {
- const {cv,revisions,revision}=useLoaderData<DetailData>();const historical=revision.id!==cv.current_revision_id;
- return <section className="page"><Link className="backlink" to="/cvs">← Мои CV</Link><div className="page-title"><div><h1>{revision.name}</h1><p>{historical?'Историческая версия':'Текущая версия'} {revision.revision_number}</p></div><div className="actions"><Refresh/><Link className="button secondary" to={'/cvs/'+cv.id+'/edit'}>Создать новую версию</Link><Link className="button" to={'/match-runs/new?cv_id='+cv.id}>Выбрать вакансии для сопоставления</Link></div></div>
- <div className="detail-grid"><div><RevisionContent revision={revision}/></div><div className="panel"><h2>История версий</h2>{revisions.map(r=><article className="source" key={r.id}><Link to={'/cvs/'+cv.id+'/revisions/'+r.id}>Версия {r.revision_number} · {r.name}</Link><p>{sourceKinds[r.source.kind]}</p><Time value={r.imported_at}/></article>)}</div></div></section>;
+ const {cv,revisions,revision}=useLoaderData<DetailData>();const location=useLocation();const historical=revision.id!==cv.current_revision_id;
+ const search=new URLSearchParams((location.state as {cvListSearch?:string}|null)?.cvListSearch||'');
+ if(cv.deleted_at)search.set('deleted','true');else search.delete('deleted');search.delete('cursor');
+ const back='/cvs'+(search.size?'?'+search:'');const routeState={cvListSearch:search.toString()};
+ return <section className="page"><Link className="backlink" to={back}>← {cv.deleted_at?'Удалённые CV':'Мои CV'}</Link><div className="page-title"><div><h1>{revision.name}</h1><p>{sourceLabel(cv.source_code)} · {historical?'Историческая версия':'Текущая версия'} {revision.revision_number}</p></div><div className="actions"><Refresh/>{!cv.deleted_at&&<><Link className="button secondary" state={routeState} to={'/cvs/'+cv.id+'/edit'}>Создать новую версию</Link><Link className="button" to={'/match-runs/new?cv_id='+cv.id}>Выбрать вакансии для сопоставления</Link></>}<CVLifecycle key={cv.id+':'+cv.current_revision_id+':'+cv.lifecycle_version} cv={cv}/></div></div>
+ {cv.deleted_at&&<p className="problem" role="status">CV удалено из активного списка. Для новых версий и сопоставлений сначала восстановите его. История доступна полностью.</p>}
+ <div className="detail-grid"><div><RevisionContent revision={revision}/></div><div className="panel"><h2>История версий</h2>{revisions.map(r=><article className="source" key={r.id}><Link state={routeState} to={'/cvs/'+cv.id+'/revisions/'+r.id}>Версия {r.revision_number} · {r.name}</Link><p>{sourceKinds[r.source.kind]}</p><Time value={r.imported_at}/></article>)}</div></div></section>;
 }
-type Draft={name:string;hh_url:string|null;content:string;structured:Json;source:{kind:string;observed_at:string;file_name:string|null}};
+type Draft={name:string;hh_url:string|null;source_code:string;source_url:string|null;external_id:string|null;content:string;structured:Json;source:{kind:string;observed_at:string;file_name:string|null}};
 function CVImport() {
- const cv=useLoaderData<CV|null>();const navigate=useNavigate();const mutation=useMutation();
- const [name,setName]=useState(cv?.name||'');const [link,setLink]=useState(cv?.hh_url||'');const [content,setContent]=useState(cv?.revision?.content||'');
+ const {cv,sources}=useLoaderData<ImportData>();const navigate=useNavigate();const mutation=useMutation();
+ const [origin,setOrigin]=useState(cv?.source_code||'manual');const [customOrigin,setCustomOrigin]=useState('');const [externalId,setExternalId]=useState(cv?.external_id||'');
+ const [name,setName]=useState(cv?.name||'');const [link,setLink]=useState(cv?.source_url||cv?.hh_url||'');const [content,setContent]=useState(cv?.revision?.content||'');
  const [structured,setStructured]=useState(JSON.stringify(cv?.revision?.structured||{},null,2));const [fileName,setFileName]=useState<string|null>(null);
  const [dirty,setDirty]=useState(false);const [preview,setPreview]=useState<Draft|null>(null);const [confirmed,setConfirmed]=useState(false);
  const [busy,setBusy]=useState(false);const [error,setError]=useState<ApiProblem|null>(null);const controller=useRef<AbortController|null>(null);const fileToken=useRef(0);
@@ -54,7 +82,8 @@ function CVImport() {
   event.preventDefault();setError(null);setConfirmed(false);const abort=new AbortController();controller.current?.abort();controller.current=abort;
   try {
    let info:Json;try{info=JSON.parse(structured);}catch{throw new Error('Проверьте JSON структурированных сведений.');}
-   const draft:Draft={name,hh_url:link.trim()||null,content,structured:info,source:{kind:fileName?'manual_file':cv?'manual_edit':'manual_text',observed_at:new Date().toISOString(),file_name:fileName}};
+   const code=origin==='other'?customOrigin.trim().toLowerCase():origin;
+   const draft:Draft={name,hh_url:code==='hh.ru'||code==='manual'?link.trim()||null:null,source_code:code,source_url:link.trim()||null,external_id:externalId.trim()||null,content,structured:info,source:{kind:fileName?'manual_file':cv?'manual_edit':'manual_text',observed_at:new Date().toISOString(),file_name:fileName}};
    setBusy(true);
    const body={...draft};
    const result=await api<{data:Draft}>('cvs/import-preview',{method:'POST',headers:{'Content-Type':'application/json','Idempotency-Key':clientUuid()},body:JSON.stringify(body),signal:abort.signal});
@@ -63,26 +92,31 @@ function CVImport() {
   finally {if(controller.current===abort)setBusy(false);}
  }
  function save(){if(preview&&confirmed)mutation.submit(cv?'cvs/'+cv.id+'/revisions':'cvs','POST',{...preview,confirmed:true,...(cv?{expected_revision_id:cv.current_revision_id}:{})});}
+ if(cv?.deleted_at)return <section className="page"><h1>CV удалено</h1><p>Сначала восстановите CV, чтобы создать новую версию.</p><Link className="button" to={'/cvs/'+cv.id}>Открыть CV для восстановления</Link></section>;
  return <section className="page"><Link className="backlink" to={cv?'/cvs/'+cv.id:'/cvs'}>← Мои CV</Link><h1>{cv?'Новая версия CV':'Импорт CV'}</h1><p className="lede">Просмотрите содержимое перед сохранением.</p><DraftGuard dirty={dirty&&!success}/>
  <p className="hint">Прямой импорт из HH в этом интерфейсе ещё не подключён. Вставьте текст из открытого вами резюме или загрузите .txt / .md. Ссылка HH хранится как происхождение; приложение её не загружает.</p>
- <Problem error={error||mutation.error}/><form onSubmit={event=>void review(event)} onChange={event=>{if(event.target instanceof HTMLInputElement&&event.target.type==='file')return;invalidate();}}>
+ <Problem error={error||mutation.error}/>{mutation.error?.code==='cv_deleted_duplicate_source'&&<Link className="button secondary" to={'/cvs?deleted=true&source_code='+encodeURIComponent(origin==='other'?customOrigin:origin)}>Открыть удалённые CV для восстановления</Link>}<form onSubmit={event=>void review(event)} onChange={event=>{if(event.target instanceof HTMLInputElement&&event.target.type==='file')return;invalidate();}}>
  <fieldset disabled={busy||mutation.pending}><legend>Данные CV</legend>
  <Field label="Название CV" name="name" value={name} onChange={e=>setName(e.target.value)} maxLength={300} required/>
- <Field label="Ссылка на резюме HH" name="hh_url" value={link} onChange={e=>setLink(e.target.value)} placeholder="https://hh.ru/resume/ID"/>
+ <Field label="Источник CV" name="source_code"><select id="source_code" name="source_code" value={origin} disabled={!!cv} onChange={e=>setOrigin(e.target.value)}>{sources.map(s=><option key={s.code} value={s.code}>{s.label}</option>)}<option value="other">Другой источник</option></select></Field>
+ {origin==='other'&&<Field label="Домен другого источника" name="custom_source" value={customOrigin} onChange={e=>setCustomOrigin(e.target.value)} placeholder="example.org" required maxLength={253}/>}
+ <Field label={origin==='manual'||origin==='hh.ru'?'Ссылка на резюме HH':'Ссылка на CV в источнике'} name="hh_url" value={link} readOnly={!!cv} onChange={e=>setLink(e.target.value)} placeholder={origin==='hh.ru'?'https://hh.ru/resume/ID':'HTTPS ссылка на CV'}/>
+ {origin!=='manual'&&origin!=='hh.ru'&&<Field label="Внешний ID CV (если известен)" name="external_id" value={externalId} readOnly={!!cv} onChange={e=>setExternalId(e.target.value)} maxLength={300}/>}
+ <p className="hint">Для ссылки HH выберите hh.ru. Источник отделён от способа импорта. skillstaff.ru и другие домены сохраняют только введённые вами сведения; подключение к ним не выполняется.</p>
  <Field label="Файл CV (.txt / .md)" name="cv_file" type="file" accept=".txt,.md,text/plain,text/markdown" onChange={event=>void file(event)}/>
  <Field label="Содержимое CV" name="content"><textarea id="content" name="content" value={content} onChange={e=>setContent(e.target.value)} required maxLength={200000} rows={12}/></Field>
  <Field label="Структурированные сведения (JSON)" name="structured"><textarea id="structured" name="structured" value={structured} onChange={e=>setStructured(e.target.value)} rows={6}/></Field><p className="hint">Необязательно: summary, skills, experience (role, details), education. Сведения вводятся явно; навыки не дописываются автоматически.</p>
  <button>Предпросмотр CV</button> <Link className="button secondary" to={cv?'/cvs/'+cv.id:'/cvs'}>Отмена</Link></fieldset>
  </form>{busy&&<p role="status">Подготовка предпросмотра… <button className="secondary" onClick={()=>{fileToken.current++;controller.current?.abort();setBusy(false);}}>Отменить предпросмотр</button></p>}
- {preview&&<section className="panel"><h2>Проверьте импорт</h2><h3>{preview.name}</h3><p>{preview.hh_url||'Ссылка HH не указана'} · {sourceKinds[preview.source.kind]} {preview.source.file_name||''}</p><p className="preserve cv-content">{preview.content}</p><pre>{JSON.stringify(preview.structured,null,2)}</pre>
+ {preview&&<section className="panel"><h2>Проверьте импорт</h2><h3>{preview.name}</h3><p>{sourceLabel(preview.source_code)} · {preview.source_url||'Ссылка не указана'} · {sourceKinds[preview.source.kind]} {preview.source.file_name||''}</p><p className="preserve cv-content">{preview.content}</p><pre>{JSON.stringify(preview.structured,null,2)}</pre>
  <label className="check"><input type="checkbox" checked={confirmed} onChange={e=>setConfirmed(e.target.checked)}/>Я проверил(а) содержимое и происхождение CV</label>
  <div className="actions"><button type="button" disabled={!confirmed||mutation.pending} onClick={save}>{mutation.pending?'Сохранение…':cv?'Сохранить новую версию':'Сохранить CV'}</button>{mutation.error&&<button className="secondary" disabled={mutation.pending} onClick={mutation.retry}>Повторить предыдущий запрос</button>}</div><p className="hint">Сопоставление не запускается при сохранении CV.</p>
  </section>}</section>;
 }
 export const cvRoutes=[
- {path:'cvs',loader:({request}:LoaderFunctionArgs)=>all<CV>('cvs',request.signal),Component:CVList},
- {path:'cvs/new',loader:()=>null,Component:CVImport},
+ {path:'cvs',loader:async({request}:LoaderFunctionArgs):Promise<ListData>=>{const p=new URL(request.url).searchParams;const q=new URLSearchParams();const deleted=p.get('deleted')==='true';if(deleted)q.set('deleted','true');for(const code of p.getAll('source_code'))q.append('source_code',code);const[cvs,sources]=await Promise.all([all<CV>('cvs'+(q.size?'?'+q:''),request.signal),all<CVOrigin>('cv-sources',request.signal)]);return {cvs,sources,deleted};},Component:CVList},
+ {path:'cvs/new',loader:async({request}:LoaderFunctionArgs):Promise<ImportData>=>({cv:null,sources:await all<CVOrigin>('cv-sources',request.signal)}),Component:CVImport},
  {path:'cvs/:id',loader:detailLoader,Component:CVDetail},
- {path:'cvs/:id/edit',loader:async(args:LoaderFunctionArgs)=>(await detailLoader(args)).cv,Component:CVImport},
+ {path:'cvs/:id/edit',loader:async(args:LoaderFunctionArgs):Promise<ImportData>=>({cv:(await detailLoader(args)).cv,sources:await all<CVOrigin>('cv-sources',args.request.signal)}),Component:CVImport},
  {path:'cvs/:id/revisions/:revisionId',loader:detailLoader,Component:CVDetail},
 ];

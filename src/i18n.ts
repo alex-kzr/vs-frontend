@@ -12,6 +12,7 @@ const values:Record<string,string>={
 export function valueLabel(value:string|null|undefined) {return value?values[value]||value:'Не указано';}
 export function statusChoices(current?:string) {return statuses.filter(value=>value!=='rejected'||current==='rejected').map(id=>({id,label:valueLabel(id)}));}
 const fields:Record<string,string>={
+ source_code:'Источник CV',source_url:'Ссылка источника',external_id:'Внешний ID CV',expected_lifecycle_version:'Состояние CV',
  body:'Текст',name:'Название',title:'Название вакансии',description:'Описание',status:'Статус',notes:'Заметки',company_id:'Компания',website:'Сайт',role:'Должность',
  keywords:'Ключевые слова',excluded_keywords:'Исключённые слова',locations:'Местоположения',technologies:'Технологии',work_formats:'Форматы работы',employment_types:'Виды занятости',
  queries:'Запросы в браузере',criteria:'Критерии',criteria_version:'Версия критериев',enabled:'Доступность',display_name:'Имя',email:'Электронная почта',profile_url:'Ссылка на профиль',role_ids:'Роли',
@@ -110,6 +111,10 @@ const messages:Record<string,string>={
 export function fieldMessage(message:string) {return messages[message]||(/[А-Яа-яЁё]/.test(message)?message:'Проверьте значение, формат и связи этого поля.');}
 const errors:Record<string,string>={
  cv_revision_conflict:'Текущая версия CV изменилась. Обновите страницу и проверьте изменения перед созданием новой версии или пакета.',
+ cv_deleted:'CV удалено. Сначала восстановите его в разделе «Удалённые CV», затем обновите страницу.',
+ cv_deleted_duplicate_source:'Это CV уже сохранено и удалено. Восстановите существующее CV в разделе «Удалённые CV»; повторный импорт не создаёт дубль.',
+ cv_duplicate_source:'CV из этого источника с той же ссылкой или внешним ID уже существует. Откройте его для создания новой версии.',
+ cv_lifecycle_conflict:'Состояние CV уже изменилось. Обновите страницу и проверьте, активно оно или удалено.',
  cv_duplicate_url:'Это резюме HH уже связано с другим CV. Откройте существующее CV и создайте новую версию.',
  matching_agent_conflict:'Источник результата не соответствует агенту, который получил задание. Проверьте имя агента и текущую попытку.',
  matching_input_conflict:'Попытка или версия CV не соответствует пакету. Загрузите актуальные входы задания.',

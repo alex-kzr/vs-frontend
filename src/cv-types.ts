@@ -1,9 +1,11 @@
 import type { RecordBase, Json } from './types';
 export interface CVSource {kind:string;observed_at:string;url:string|null;file_name:string|null;agent:string|null}
-export interface CV extends RecordBase {name:string;hh_url:string|null;current_revision_id:string;current_revision_number:number;imported_at:string;revision?:CVRevision}
-export interface CVRevision extends RecordBase {cv_id:string;revision_number:number;name:string;hh_url:string|null;content:string;structured:Json;source:CVSource;imported_at:string}
+export interface CVOrigin extends RecordBase {code:string;label:string}
+export const sourceLabel=(code:string|undefined)=>code&&code!=='manual'?code:'Вручную';
+export interface CV extends RecordBase {deleted_at:string|null;lifecycle_version:number;source_code:string;source_url:string|null;external_id:string|null;name:string;hh_url:string|null;current_revision_id:string;current_revision_number:number;imported_at:string;revision?:CVRevision}
+export interface CVRevision extends RecordBase {source_code?:string;source_url?:string|null;external_id?:string|null;cv_id:string;revision_number:number;name:string;hh_url:string|null;content:string;structured:Json;source:CVSource;imported_at:string}
 export type RevisionMeta=Omit<CVRevision,'content'|'structured'>;
-export interface MatchRun extends RecordBase {cv_id:string;cv_revision_id:string;cv_revision_number:number;cv_name:string;state:string;counts:Record<string,number>;stale:boolean;cv_stale:boolean;stale_vacancies:number}
+export interface MatchRun extends RecordBase {cv_deleted:boolean;cv_id:string;cv_revision_id:string;cv_revision_number:number;cv_name:string;state:string;counts:Record<string,number>;stale:boolean;cv_stale:boolean;stale_vacancies:number}
 export interface Evidence {source:'cv'|'vacancy';path:string;quote:string|null}
 export interface Finding {dimension:string;statement:string;evidence:Evidence[]}
 export interface Assessment {summary:string;matches:Finding[];gaps:Finding[];questions:Finding[];unknowns:Finding[]}

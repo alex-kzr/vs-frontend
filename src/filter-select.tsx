@@ -37,7 +37,7 @@ function CheckboxFilterBase(props:BaseProps) {
      <button type="button" className="secondary filter-clear" disabled={!selected.size} onClick={()=>setSelected(new Set())}>Очистить выбор</button>
     </div>
     {props.variant==='searchable'&&<label className="field filter-search" htmlFor={id+'-search'}><span>{props.searchLabel}</span>
-     <input id={id+'-search'} type="search" autoComplete="off" placeholder="Название компании…" value={query} onChange={event=>setQuery(event.currentTarget.value)}/>
+     <input id={id+'-search'} type="search" autoComplete="off" placeholder={props.searchLabel==='Поиск компаний'?'Название компании…':'Поиск…'} value={query} onChange={event=>setQuery(event.currentTarget.value)}/>
     </label>}
     <fieldset className="filter-options" aria-labelledby={id+'-caption'}>
      {visible.map(option=><label className="filter-option" key={option.id}>

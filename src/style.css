@@ -32,3 +32,5 @@
 .cv-content{max-height:600px;overflow:auto;padding:12px;background:#f6f8f2;border-radius:6px}.evidence{margin:12px 0;border-left:3px solid #a9be8b;padding:10px 15px;background:#f6f8f2}.evidence small{color:#637b60}.evidence p{margin:6px 0 0}
 
 .page h1,.hint{overflow-wrap:anywhere}
+
+.cv-dialog{border:1px solid #cad5e2;border-radius:16px;padding:24px;max-width:min(560px,calc(100vw - 32px));color:#24364d}.cv-dialog::backdrop{background:#17243a88}.danger{border-color:#a94444;color:#9b2929}.cv-dialog .actions{flex-wrap:wrap}

@@ -21,3 +21,8 @@ describe('Russian presentation keeps stored identities and user content',()=>{
   expect(problemMessage({code:'unconfirmed_submission',message:'Unconfirmed',fields:{}})).toContain('без изменений');
  });
 });
+
+it('explains deleted CV recovery and stale lifecycle without an irreversible deletion claim',()=>{
+ for(const code of ['cv_deleted','cv_deleted_duplicate_source'])expect(problemMessage({code,message:'Conflict',fields:{}})).toMatch(/восстанов|Восстанов/);
+ expect(problemMessage({code:'cv_lifecycle_conflict',message:'Conflict',fields:{}})).toContain('Обновите');
+});
