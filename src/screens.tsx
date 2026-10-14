@@ -14,8 +14,8 @@ export function Layout() {
  const navigation=useNavigation();
  return <div className="app"><aside><Link className="brand" to="/vacancies"><span className="brand-icon">V</span><span>Поиск<br/><b>вакансий</b></span></Link><p className="sidebar-label">РАБОЧАЯ ОБЛАСТЬ</p>
   <nav aria-label="Основное меню">{resources.map((resource,i)=><NavLink key={resource} to={'/'+resource}><span className="nav-number">0{i+1}</span>{names[resource]}</NavLink>)}<NavLink to="/cvs"><span className="nav-number">06</span>Мои CV</NavLink><NavLink to="/match-runs"><span className="nav-number">07</span>Сопоставления</NavLink></nav>
-  <div className="local-note"><span className="dot"/> Локальная база SQLite<br/><small>Ручные записи · Только на этом компьютере</small></div></aside>
-  <main><header className="topbar"><span>КАРЬЕРА / ДЕЙСТВИЯ</span><span>Личная рабочая область</span></header>
+  </aside>
+  <main>
    {navigation.state!=='idle'&&<p role="status" className="loading">Загрузка / обновление…</p>}<Outlet/></main></div>;
 }
 export function RouteFailure() {
@@ -76,7 +76,7 @@ function ContactDetail({data,record:r}: {data:RouteData;record:Contact}) {
  return <div className="panel"><h2>{data.companies.find(c=>c.id===r.company_id)?.name}</h2><p>{r.email||'Почта не указана'}</p><p><External url={r.profile_url}/></p><div>{r.roles.map(role=><span className="badge" key={role.id}>{lookupLabel(role)}</span>)}</div><p className="preserve">{r.notes||'Заметок нет'}</p></div>;
 }
 function ConfigurationDetail({record:r}: {record:Configuration}) {
- return <><div className="panel"><h2>Сохранённые критерии поиска <span className="badge">{r.enabled?'включён':'выключен'}</span></h2><p className="hint">Сохранение критериев не запускает автоматический мониторинг.</p><dl><dt>Должность</dt><dd>{r.criteria.role||'Любые'}</dd>
+ return <><div className="panel"><h2>Сохранённые критерии поиска <span className="badge">{r.enabled?'включён':'выключен'}</span></h2><p className="hint">Сохранение критериев не запускает автоматический мониторинг.</p><dl><dt>Должность</dt><dd>{r.criteria.role||'Любые'}</dd>{r.criteria.instructions&&<><dt>Инструкции и ограничения поиска</dt><dd className="preserve">{r.criteria.instructions}</dd></>}
   {(['keywords','excluded_keywords','locations','technologies','work_formats','employment_types'] as const).map(key=><div key={key}><dt>{fieldLabel(key)}</dt><dd>{r.criteria[key].map(value=>key==='work_formats'||key==='employment_types'?valueLabel(value):value).join(', ')||'Любые / не указаны'}</dd></div>)}{Boolean(r.criteria.queries?.length)&&<><dt>Запросы в браузере</dt><dd><ul>{r.criteria.queries?.map(query=>{const params=new URLSearchParams({text:query});if(r.criteria.work_formats.length===1&&r.criteria.work_formats[0]==='remote')params.set('work_format','REMOTE');return <li key={query}><a href={'https://hh.ru/search/vacancy?'+params} target="_blank" rel="noopener noreferrer">{query}</a></li>;})}</ul><p className="hint">Проверяйте условия полностью удалённой работы и ограничения по странам в описании вакансии. Результаты запросов могут пересекаться.</p></dd></>}{r.criteria.hh&&<><dt>Запрос HH</dt><dd>{r.criteria.hh.text||'Не настроено'}</dd><dt>Регионы HH</dt><dd>{r.criteria.hh.areas.map(a=>a.name).join(', ')||'Все регионы'}</dd><dt>Фильтры HH</dt><dd>{[...r.criteria.hh.experience,...r.criteria.hh.work_formats,...r.criteria.hh.employment_forms].map(valueLabel).join(', ')||'Любые'}</dd><dt>Записей на странице HH / период публикации</dt><dd>{r.criteria.hh.per_page} / {r.criteria.hh.period_days?r.criteria.hh.period_days+' дн.':'Любые'}</dd></>}</dl><Link to={'/vacancies?search_configuration_id='+r.id}>Связанные вакансии →</Link></div><SearchPreview key={JSON.stringify(r.criteria.hh)+r.id} configurationId={r.id} hh={r.criteria.hh}/></>;
 }
 function StatusPicker({value}: {value:string}) {

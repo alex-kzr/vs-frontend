@@ -14,7 +14,7 @@ export function statusChoices(current?:string) {return statuses.filter(value=>va
 const fields:Record<string,string>={
  expected_version:'Версия состояния', reference_cv_id:'CV сравнения', expected_reference_revision_id:'Версия CV сравнения', category:'Категория замечания', evidence:'Доказательства', resolutions:'Подтверждённые исправления', issue_key:'Ключ замечания', findings:'Замечания', vacancy_assessments:'Оценки вакансий', vacancy_version:'Версия вакансии', context_cvs:'Другие CV',
  source_code:'Источник CV',source_url:'Ссылка источника',external_id:'Внешний ID CV',expected_lifecycle_version:'Состояние CV',
- body:'Текст',name:'Название',title:'Название вакансии',description:'Описание',status:'Статус',notes:'Заметки',company_id:'Компания',website:'Сайт',role:'Должность',
+ instructions:'Инструкции и ограничения поиска',body:'Текст',name:'Название',title:'Название вакансии',description:'Описание',status:'Статус',notes:'Заметки',company_id:'Компания',website:'Сайт',role:'Должность',
  keywords:'Ключевые слова',excluded_keywords:'Исключённые слова',locations:'Местоположения',technologies:'Технологии',work_formats:'Форматы работы',employment_types:'Виды занятости',
  queries:'Запросы в браузере',criteria:'Критерии',criteria_version:'Версия критериев',enabled:'Доступность',display_name:'Имя',email:'Электронная почта',profile_url:'Ссылка на профиль',role_ids:'Роли',
  location:'Местоположение',work_format:'Формат работы',employment_type:'Вид занятости',salary_min:'Минимальная зарплата',salary_max:'Максимальная зарплата',salary_currency:'Валюта',public_url:'Публичная ссылка',

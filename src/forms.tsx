@@ -31,7 +31,7 @@ function EntryForm({data}: {data:RouteData}) {
    const criteria={role:nullable(form,'role'),keywords:csv(form,'keywords'),excluded_keywords:csv(form,'excluded_keywords'),locations:csv(form,'locations'),technologies:csv(form,'technologies'),
     work_formats:form.getAll('work_formats').map(String),employment_types:form.getAll('employment_types').map(String)};
    return {name:text(form,'name'),criteria_version:1,enabled:form.get('enabled')==='on',criteria:{
-    ...criteria,...(text(form,'queries')||config?.criteria.queries?{queries:text(form,'queries').split(/\r?\n/).map(q=>q.trim()).filter(Boolean)}:{}),...(form.get('use_hh')==='on'?{hh:{text:nullable(form,'hh_text'),areas:JSON.parse(text(form,'hh_areas')||'[]') as Json,
+    ...criteria,...(text(form,'instructions')||config?.criteria.instructions!==undefined?{instructions:nullable(form,'instructions')}:{}),...(text(form,'queries')||config?.criteria.queries?{queries:text(form,'queries').split(/\r?\n/).map(q=>q.trim()).filter(Boolean)}:{}),...(form.get('use_hh')==='on'?{hh:{text:nullable(form,'hh_text'),areas:JSON.parse(text(form,'hh_areas')||'[]') as Json,
      experience:form.getAll('hh_experience').map(String),work_formats:form.getAll('hh_work_formats').map(String),employment_forms:form.getAll('hh_employment').map(String),
      period_days:text(form,'hh_period')?Number(text(form,'hh_period')):null,per_page:Number(text(form,'hh_per_page')||20)}}:{}),
    }};
@@ -59,6 +59,8 @@ function EntryForm({data}: {data:RouteData}) {
    <Field label="Название профиля" name="name" defaultValue={config?.name} required maxLength={200}/>
    <label className="check"><input type="checkbox" name="enabled" defaultChecked={config?.enabled??true}/> Доступен для ручного выбора</label>
    <p className="hint">Критерии сохраняются локально. Автоматический мониторинг не запускается.</p>
+   <TextArea label="Инструкции и ограничения поиска" name="instructions" value={config?.criteria.instructions} max={100000}/>
+   <p className="hint">Сохраните требования к оплате, графику и найму. Эти инструкции нужны при ручном разборе; поисковые запросы задаются отдельно.</p>
    <TextArea label="Запросы в браузере (по одному на строку)" name="queries" value={config?.criteria.queries?.join('\n')} max={10050}/>
    <p className="hint">У каждого профиля свои запросы и обнаружения. Обычная страница поиска HH открывается только при выборе ссылки.</p>
    <HhCriteriaFields value={config?.criteria.hh}/><p className="hint">Критерии ниже используются для тестовых вакансий. Для HH используются отдельные поля выше.</p><Field label="Должность" name="role" defaultValue={config?.criteria.role||''} maxLength={500}/>

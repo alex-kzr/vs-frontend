@@ -2,7 +2,7 @@ export type Json = null | boolean | number | string | Json[] | { [key:string]:Js
 export interface RecordBase {id:string;created_at:string;updated_at:string}
 export interface Company extends RecordBase {name:string;website:string|null;notes:string|null}
 export interface HhCriteria {text:string|null;areas:{id:string;name:string}[];experience:string[];work_formats:string[];employment_forms:string[];period_days:number|null;per_page:number}
-export interface Criteria {queries?:string[];hh?:HhCriteria;role:string|null;keywords:string[];excluded_keywords:string[];locations:string[];technologies:string[];work_formats:string[];employment_types:string[]}
+export interface Criteria {instructions?:string|null;queries?:string[];hh?:HhCriteria;role:string|null;keywords:string[];excluded_keywords:string[];locations:string[];technologies:string[];work_formats:string[];employment_types:string[]}
 export interface Configuration extends RecordBase {name:string;criteria_version:number;criteria:Criteria;enabled:boolean}
 export interface Lookup extends RecordBase {code:string;label?:string;name?:string;enabled?:boolean}
 export interface Contact extends RecordBase {company_id:string;display_name:string;email:string|null;profile_url:string|null;notes:string|null;role_ids:string[];roles:Lookup[]}
