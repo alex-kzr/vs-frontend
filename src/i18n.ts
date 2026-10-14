@@ -12,6 +12,7 @@ const values:Record<string,string>={
 export function valueLabel(value:string|null|undefined) {return value?values[value]||value:'Не указано';}
 export function statusChoices(current?:string) {return statuses.filter(value=>value!=='rejected'||current==='rejected').map(id=>({id,label:valueLabel(id)}));}
 const fields:Record<string,string>={
+ expected_version:'Версия состояния', reference_cv_id:'CV сравнения', expected_reference_revision_id:'Версия CV сравнения', category:'Категория замечания', evidence:'Доказательства', resolutions:'Подтверждённые исправления', issue_key:'Ключ замечания', findings:'Замечания', vacancy_assessments:'Оценки вакансий', vacancy_version:'Версия вакансии', context_cvs:'Другие CV',
  source_code:'Источник CV',source_url:'Ссылка источника',external_id:'Внешний ID CV',expected_lifecycle_version:'Состояние CV',
  body:'Текст',name:'Название',title:'Название вакансии',description:'Описание',status:'Статус',notes:'Заметки',company_id:'Компания',website:'Сайт',role:'Должность',
  keywords:'Ключевые слова',excluded_keywords:'Исключённые слова',locations:'Местоположения',technologies:'Технологии',work_formats:'Форматы работы',employment_types:'Виды занятости',
@@ -116,6 +117,13 @@ const errors:Record<string,string>={
  cv_duplicate_source:'CV из этого источника с той же ссылкой или внешним ID уже существует. Откройте его для создания новой версии.',
  cv_lifecycle_conflict:'Состояние CV уже изменилось. Обновите страницу и проверьте, активно оно или удалено.',
  cv_duplicate_url:'Это резюме HH уже связано с другим CV. Откройте существующее CV и создайте новую версию.',
+ review_version_conflict:'Состояние проверки изменилось. Обновите страницу.',
+ review_attempt_conflict:'Попытка проверки изменилась. Получите актуальные входы.',
+ review_state_conflict:'Проверка завершена или её состояние изменилось. Обновите страницу.',
+ review_stale:'Входы изменились. Создайте новую проверку текущих версий.',
+ recommendation_version_conflict:'Рекомендация или решение изменились. Обновите страницу перед сохранением.',
+ recommendation_resolved:'Устранение уже подтверждено повторной проверкой.',
+ vacancy_version_conflict:'Вакансия изменилась. Обновите страницу и создайте новый пакет.',
  matching_agent_conflict:'Источник результата не соответствует агенту, который получил задание. Проверьте имя агента и текущую попытку.',
  matching_input_conflict:'Попытка или версия CV не соответствует пакету. Загрузите актуальные входы задания.',
  matching_state_conflict:'Состояние пакета или задания уже изменилось. Обновите страницу; поздний ответ отменённой попытки не сохраняется.',

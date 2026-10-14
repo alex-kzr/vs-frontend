@@ -1,4 +1,5 @@
 import { cvRoutes } from './cvs';
+import { reviewRoutes } from './cv-recommendations';
 import { matchingRoutes } from './matching';
 import { previewLoader } from './preview';
 import { createBrowserRouter, redirect, type LoaderFunctionArgs } from 'react-router';
@@ -61,6 +62,6 @@ export const router=createBrowserRouter([{path:'/',Component:Layout,children:[
   {path:resource+'/:id',loader:detailLoader(resource),Component:DetailScreen,ErrorBoundary:RouteFailure},
   ...(resource!=='vacancies'&&resource!=='conversations'?[{path:resource+'/:id/edit',loader:entryLoader(resource),Component:EntryScreen,ErrorBoundary:RouteFailure}]:[]),
  ]),
- ...[...cvRoutes,...matchingRoutes].map(route=>({...route,ErrorBoundary:RouteFailure})),
+ ...[...cvRoutes,...matchingRoutes,...reviewRoutes].map(route=>({...route,ErrorBoundary:RouteFailure})),
  {path:'*',Component:()=> <section><h1>Страница не найдена</h1><a href="/vacancies">Вернуться к вакансиям</a></section>},
 ]}]);

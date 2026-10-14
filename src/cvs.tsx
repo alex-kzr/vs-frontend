@@ -7,13 +7,17 @@ import { DraftGuard, External, Field, Problem, Refresh, Time, useMutation } from
 import type { ApiProblem, Json } from './types';
 import type { CV, CVOrigin, CVRevision, RevisionMeta } from './cv-types';
 import { sourceKinds, sourceLabel } from './cv-types';
+import { RecommendationsBlock } from './cv-recommendations';
+import type { Recommendation, ReviewRun } from './cv-review-types';
+import type { Vacancy } from './types';
 
-type DetailData={cv:CV;revisions:RevisionMeta[];revision:CVRevision};
+type DetailData={cv:CV;revisions:RevisionMeta[];revision:CVRevision;cvs:CV[];runs:ReviewRun[];recommendations:Recommendation[];vacancies:Vacancy[]};
 async function detailLoader({params,request}:LoaderFunctionArgs):Promise<DetailData> {
  const cv=(await api<{data:CV}>('cvs/'+params.id,{signal:request.signal})).data;
  const revisions=await all<RevisionMeta>('cvs/'+params.id+'/revisions',request.signal);
  const revision=params.revisionId?(await api<{data:CVRevision}>('cvs/'+params.id+'/revisions/'+params.revisionId,{signal:request.signal})).data:cv.revision!;
- return {cv,revisions,revision};
+ const [cvs,runs,recommendations,vacancies]=await Promise.all([all<CV>('cvs',request.signal),all<ReviewRun>('cvs/'+params.id+'/reviews',request.signal),all<Recommendation>('cvs/'+params.id+'/recommendations',request.signal),all<Vacancy>('vacancies?status=saved',request.signal)]);
+ return {cv,revisions,revision,cvs,runs,recommendations,vacancies};
 }
 interface ListData {cvs:CV[];sources:CVOrigin[];states:string[]}
 interface ImportData {cv:CV|null;sources:CVOrigin[]}
@@ -54,11 +58,12 @@ export function RevisionContent({revision}:{revision:CVRevision}) {
  <div className="panel"><h2>Происхождение версии</h2><dl><dt>Источник CV</dt><dd>{sourceLabel(revision.source_code||(revision.hh_url?'hh.ru':'manual'))}</dd><dt>Способ импорта</dt><dd>{sourceKinds[revision.source.kind]||revision.source.kind}</dd><dt>Просмотр / ввод</dt><dd><Time value={revision.source.observed_at}/></dd><dt>Импорт в базу</dt><dd><Time value={revision.imported_at}/></dd><dt>Ссылка источника</dt><dd><External url={revision.source_url||revision.hh_url}/></dd>{revision.external_id&&<><dt>Внешний ID</dt><dd>{revision.external_id}</dd></>}{revision.source.file_name&&<><dt>Файл</dt><dd>{revision.source.file_name}</dd></>}{revision.source.agent&&<><dt>Агент</dt><dd>{revision.source.agent}</dd></>}</dl></div></>;
 }
 function CVDetail() {
- const {cv,revisions,revision}=useLoaderData<DetailData>();const location=useLocation();const historical=revision.id!==cv.current_revision_id;
+ const {cv,revisions,revision,cvs,runs,recommendations,vacancies}=useLoaderData<DetailData>();const location=useLocation();const historical=revision.id!==cv.current_revision_id;
  const search=new URLSearchParams((location.state as {cvListSearch?:string}|null)?.cvListSearch??(cv.deleted_at?'cv_state=deleted':''));search.delete('cursor');
  const back='/cvs'+(search.size?'?'+search:'');const routeState={cvListSearch:search.toString()};
  return <section className="page"><Link className="backlink" to={back}>← Мои CV</Link><div className="page-title"><div><h1>{revision.name}</h1><p>{sourceLabel(cv.source_code)} · {historical?'Историческая версия':'Текущая версия'} {revision.revision_number}</p></div><div className="actions"><Refresh/>{!cv.deleted_at&&<><Link className="button secondary" state={routeState} to={'/cvs/'+cv.id+'/edit'}>Создать новую версию</Link><Link className="button" to={'/match-runs/new?cv_id='+cv.id}>Выбрать вакансии для сопоставления</Link></>}<CVLifecycle key={cv.id+':'+cv.current_revision_id+':'+cv.lifecycle_version} cv={cv}/></div></div>
  {cv.deleted_at&&<p className="problem" role="status">CV удалено из активного списка. Для новых версий и сопоставлений сначала восстановите его. История доступна полностью.</p>}
+ <RecommendationsBlock key={cv.id+':'+cv.current_revision_id} cv={cv} cvs={cvs} runs={runs} recommendations={recommendations} vacancies={vacancies}/>
  <div className="detail-grid"><div><RevisionContent revision={revision}/></div><div className="panel"><h2>История версий</h2>{revisions.map(r=><article className="source" key={r.id}><Link state={routeState} to={'/cvs/'+cv.id+'/revisions/'+r.id}>Версия {r.revision_number} · {r.name}</Link><p>{sourceKinds[r.source.kind]}</p><Time value={r.imported_at}/></article>)}</div></div></section>;
 }
 type Draft={name:string;hh_url:string|null;source_code:string;source_url:string|null;external_id:string|null;content:string;structured:Json;source:{kind:string;observed_at:string;file_name:string|null}};
